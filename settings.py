@@ -5,8 +5,13 @@ from fallbacks import pygame
 
 # Game properties
 # board size (a smaller board may be useful at the beginning)
-COLS = 17
-ROWS = 17
+#COLS = 17
+#ROWS = 17
+
+# smaller board size for the Walker Agent
+COLS = 9
+ROWS = 9
+
 SCENARIOS = {
     # modes useful for agent development
 	"empty": {
@@ -25,9 +30,13 @@ SCENARIOS = {
     "classic": {
         "CRATE_DENSITY": 0.75,
         "COIN_COUNT": 9
-    }
+    },
     # Feel free to add more game modes and properties
     # game is created in environment.py -> BombeRLeWorld -> build_arena()
+    "one-coin": {
+        "CRATE_DENSITY": 0,
+        "COIN_COUNT": 1
+    }
 }
 MAX_AGENTS = 4
 
