@@ -21,10 +21,11 @@ def act(self, game_state: dict):
     return self.model.propose_action(game_state)
 
 
-def convert_pos((x,y), n):
+def convert_pos(position_tuple: tuple, n):
     """
     i dont even know anymore
     """
+    x, y = position_tuple
     conv_pos = 0
     conv_pos += ((y-1)//2) * (n//2) + ((y-1) - (y-1)//2) * (n-1)
     if y % 2 == 0:
@@ -67,7 +68,7 @@ class QWalkerModel:
         weights = self.Q[:, index]
         # draw a random number to chose an action probabilistically
         random_num = np.random.rand(sum(weights))
-        if random_num < weights[0]
+        if random_num < weights[0]:
             return ACTIONS[0]
         for i in range(1,len(weights)):
             sum_so_far = sum(weights[:i-1])
