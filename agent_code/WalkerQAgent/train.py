@@ -56,7 +56,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     ))
 
 
-def end_of_game(self, last_game_state: dict, last_action: str, events: List[str]):
+def end_of_round(self, last_game_state: dict, last_action: str, events: List[str]):
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
     self.current_reward = sum([EVENT_REWARDS[event] for event in events])
     self.logger.info(f"Awarded {self.curent_reward} for events {', '.join(events)}")
