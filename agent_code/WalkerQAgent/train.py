@@ -12,8 +12,9 @@ TRANSITION_HISTORY_SIZE = 12
 EPSILON = 0.05
 
 # Rewards
-R_BASE = -0.08
-R_COIN = 1
+R_BASE = 0
+R_IDLE = 0
+R_COIN = 10
 
 
 # Event rewards
@@ -22,13 +23,17 @@ EVENT_REWARDS = {e.COIN_COLLECTED: R_COIN,
                  e.MOVED_UP: R_BASE,
                  e.MOVED_DOWN: R_BASE,
                  e.MOVED_RIGHT: R_BASE,
-                 e.WAITED: R_BASE}
+                 e.WAITED: R_IDLE,
+                 e.INVALID_ACTION: R_IDLE,
+                 e.SURVIVED_ROUND: 0
+                 }
 
 # Action indices
-ACTION_INDICES = {e.MOVED_UP: 0,
-                  e.MOVED_RIGHT: 1,
-                  e.MOVED_DOWN: 2,
-                  e.MOVED_LEFT: 3
+ACTION_INDICES = {'WAIT': 0,
+                  'UP': 1,
+                  'RIGHT': 2,
+                  'DOWN': 3,
+                  'LEFT': 4
                   }
 
 
@@ -43,8 +48,10 @@ def setup_training(self):
 
 def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_state: dict, events: List[str]):
     self.logger.debug(f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}')
-    self.current_reward = sum([EVENT_REWARDS[event] for event in events])
-    self.logger.info(f"Awarded {self.curent_reward} for events {', '.join(events)}")
+    self.current_reward = 0
+    for event in events:
+        self.current_reward += EVENT_REWARDS[event]
+    self.logger.info(f"Awarded {self.current_reward} for events {', '.join(events)}")
     self.total_reward += self.current_reward
     old_game_state_index = state_to_index(old_game_state)
     new_game_state_index = state_to_index(new_game_state)
@@ -58,8 +65,10 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
 def end_of_round(self, last_game_state: dict, last_action: str, events: List[str]):
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
-    self.current_reward = sum([EVENT_REWARDS[event] for event in events])
-    self.logger.info(f"Awarded {self.curent_reward} for events {', '.join(events)}")
+    self.current_reward = 0
+    for event in events:
+        self.current_reward += EVENT_REWARDS[event]
+    self.logger.info(f"Awarded {self.current_reward} for events {', '.join(events)}")
     self.total_reward += self.current_reward
     last_game_state_index = state_to_index(last_game_state)
     self.model.Q[ACTION_INDICES[last_action]] *= (1-ALPHA)
