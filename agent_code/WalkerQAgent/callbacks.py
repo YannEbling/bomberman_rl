@@ -71,7 +71,7 @@ class QWalkerModel:
         according to the probabilities described by the values at the corresponding entries of the Q matrix.
         """
         index = state_to_index(game_state) # how to do this? Which state is which row in Q?
-        weights = self.Q[:,index]
+        weights = self.Q[:, index]
         # draw a random number to chose an action probabilistically
         random_num = np.random.rand(sum(weights))
         if random_num < weights[0]:
