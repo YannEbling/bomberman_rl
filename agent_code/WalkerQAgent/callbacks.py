@@ -4,16 +4,20 @@ import settings as s
 
 NUM_TILES = (s.ROWS - 1)*(s.COLS - 1) - (s.ROWS // 2 - 1)*(s.COLS // 2 - 1)
 EPSILON = 0.1
+further_training_path = "model-for-refining.pt"
 
-ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
-
+ACTIONS = ['WAIT', 'UP', 'RIGHT', 'DOWN', 'LEFT']
 
 def setup(self):
     # if training is true, a new QWalkerModel is initialized. If training takes too long, there should also be the
     # possibility to further refine a pretrained model in training. All models should be saved  in QWalkerModel.pt
     if self.train:
-        self.logger.info("Setting new model from scratch.", )
-        self.model = QWalkerModel(size_S=NUM_TILES**2)
+        try:
+            self.model = pickle.load(open(further_training_path, "rb"))
+            self.logger.info("Model was loaded for further training.")
+        except FileNotFoundError:
+            self.logger.info("Setting new model from scratch.", )
+            self.model = QWalkerModel(size_S=NUM_TILES**2)
     # if not training, the current model parameters should be loaded.
     else:
         self.logger.info("Loading model from saved state.")
@@ -78,6 +82,7 @@ class QWalkerModel:
             return ACTIONS[random_index]
         index = state_to_index(game_state) # how to do this? Which state is which row in Q?
         current_column = self.Q[:, index]
+        """
         weights = np.maximum(current_column, np.zeros(np.shape(current_column)))
         total_weight = sum(weights)
         if total_weight == 0:
@@ -93,5 +98,7 @@ class QWalkerModel:
                 return ACTIONS[i]
             sum_so_far = sum_next_step
         print("THE LENGTH OF THE ARRAY IS: ", total_weight, end="\n\n\n\n")
-        raise ValueError("No proper action found. The summed probabilities of actions might not be normalized.")
+        """
+        return ACTIONS[np.argmax(current_column)]
+        # raise ValueError("No proper action found. The summed probabilities of actions might not be normalized.")
 
