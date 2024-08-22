@@ -22,18 +22,18 @@ RECORD_ENEMY_TRANSITIONS = 1.0  # record enemy transitions with probability ...
 # Custom
 
 # Learning rate alpha, 0.0 < alpha < 1.0
-ALPHA = 0.5
+ALPHA = 0.4
 
 
 # Discount factor gamma, 0.0 < gamma < 1.0
-GAMMA = 0.5
+GAMMA = 0.2
 
 
 MyTransition = namedtuple('Transition', ('state', 'action'))
 MY_TRANSITION_HISTORY_SIZE = 40
 
 
-# action to index
+# Action to index
 action_to_index = {
     "UP": 0,
     "RIGHT": 1,
@@ -42,6 +42,9 @@ action_to_index = {
     "WAIT": 4
 }
 
+# For training debugging
+coins_collected = 0
+round = 0
 
 
 def setup_training(self):
@@ -109,9 +112,9 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         old_coin_pos_index = (old_coin_pos_x - 1 + 7 * (old_coin_pos_y - 1)) + 1
     
     # 0 <= state_index <= 2400
-    old_state_index = old_agent_pos_index * old_coin_pos_index - 1
+    old_state_index = old_agent_pos_index * 48 + old_coin_pos_index - 1
     
-    
+
     
     #
     #   Compute Action Index of old_game_state
@@ -140,7 +143,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         new_coin_pos_index = (new_coin_pos_x - 1 + 7 * (new_coin_pos_y - 1)) + 1
     
     # 0 <= state_index <= 2400
-    new_state_index = new_agent_pos_index * new_coin_pos_index - 1
+    new_state_index = new_agent_pos_index * 48 + new_coin_pos_index - 1
     
 
 
@@ -148,15 +151,33 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #
     #   Update Q-value of state-action tupel
     #
-    factor1 = ( 1 - ALPHA ) * self.Q[old_state_index][old_action_index]
-    factor2 = GAMMA * np.argmax( self.Q[new_state_index] )
-    factor3 = ALPHA * ( reward_from_events(self, events) * factor2 )
+    reward = reward_from_events(self, events)
+    argmax = np.argmax( self.Q[new_state_index] )
+    
+    factor1 = ( 1.0 - ALPHA ) * self.Q[old_state_index][old_action_index]
+    factor2 = GAMMA * self.Q[new_state_index][argmax]
+    factor3 = ALPHA * ( reward + factor2 )
+    #factor2 = ALPHA * reward
+    #factor3 = ALPHA * GAMMA * np.argmax( self.Q[new_state_index] )
+    
+    self.logger.debug(f"np.argmax: {np.argmax(self.Q[new_state_index])}")
+    self.logger.debug(f"np.argmax value: {self.Q[new_state_index][argmax]}")
+    
+    self.logger.debug(f"factor1 :{factor1}")
+    self.logger.debug(f"factor2 :{factor2}")
+    self.logger.debug(f"factor3 :{factor3}")
+    
+    self.logger.debug(f"old q value before update: {self.Q[old_state_index][old_action_index]}")
+    new_value = factor1 + factor2 + factor3
+    self.logger.debug(f"new q value: {new_value}")
+    self.logger.debug(f"reward: {reward}")
     
     # set new value
-    self.Q[old_state_index][old_action_index] = factor1 + factor2 + factor3
+    self.Q[old_state_index][old_action_index] = new_value
     
+    self.logger.debug(f"new q value before update: {self.Q[old_state_index][old_action_index]}")
     
-    print(events)
+    #print(events)
     
     
     
@@ -199,7 +220,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         last_coin_pos_index = (last_coin_pos_x - 1 + 7 * (last_coin_pos_y - 1)) + 1
     
     # 0 <= state_index <= 2400
-    last_state_index = last_agent_pos_index * last_coin_pos_index - 1
+    last_state_index = last_agent_pos_index * 48 + last_coin_pos_index - 1   
  
     #
     #   Update Q-value of state-action tupel
@@ -208,16 +229,23 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     r = reward_from_events(self, events)
     if r > 1.0:
         for i in range(len(self.Q[last_state_index])):
-            self.Q[last_state_index][i] = reward_from_events(self, events)
+            self.Q[last_state_index][i] = r
 
     #   Debug - coin found?
+    for event in events:
+        if event == e.COIN_COLLECTED:
+            global coins_collected 
+            coins_collected = coins_collected + 1
+    
+    print(f"Coins collected: {coins_collected}")
 
 
+    for i in range(len(self.Q)):
+        self.logger.debug(self.Q[i])
 
-
-
-
-
+    global round
+    round = round + 1
+    self.logger.debug(f"Round nr: {round}")
 
 
 
@@ -236,15 +264,20 @@ def reward_from_events(self, events: List[str]) -> int:
     Here you can modify the rewards your agent get so as to en/discourage
     certain behavior.
     """
+    
+    # coin collected?
+
+    
+    
     game_rewards = {
-        e.COIN_COLLECTED: 20,
+        e.COIN_COLLECTED: 10,
         #e.KILLED_OPPONENT: 5,
-        e.WAITED: -1,
-        e.INVALID_ACTION: -0.5,
-        e.MOVED_RIGHT: -0.05,
-        e.MOVED_UP: -0.05,
-        e.MOVED_DOWN: -0.05,
-        e.MOVED_LEFT: -0.05
+        e.WAITED: -0.1,
+        e.INVALID_ACTION: -0.1,
+        e.MOVED_RIGHT: -0.1,
+        e.MOVED_UP: -0.1,
+        e.MOVED_DOWN: -0.1,
+        e.MOVED_LEFT: -0.1
         #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
     }
     reward_sum = 0

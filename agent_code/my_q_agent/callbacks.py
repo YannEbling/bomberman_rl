@@ -23,12 +23,18 @@ def setup(self):
 
     :param self: This object is passed to all callbacks and you can set arbitrary values.
     """
-    if self.train and os.path.isfile("my-saved-model.pt"):
-        print("Continue training model from saved state.")
-        with open("my-saved-model.pt", "rb") as file:
-            self.Q = pickle.load(file)
-            
-    elif self.train or not os.path.isfile("my-saved-model.pt"):
+    
+    
+    #
+    #   For Retraining Existing Model
+    #
+    #if self.train and os.path.isfile("my-saved-model.pt"):
+    #    print("Continue training model from saved state.")
+    #    with open("my-saved-model.pt", "rb") as file:
+    #        self.Q = pickle.load(file)        
+    #elif self.train or not os.path.isfile("my-saved-model.pt"):
+    
+    if self.train or not os.path.isfile("my-saved-model.pt"):
         self.logger.info("Setting up model from scratch.")
         print("Setting up model from scratch.")
         weights = np.random.rand(len(ACTIONS))
@@ -39,7 +45,7 @@ def setup(self):
         # for one coin scenario only 
         # Initialize
         # For 7x7 agent position in arena states and 7x7 coin position in arena (= 2401 states) containing the 5 chances for the 5 actions
-        self.Q = [[random.uniform(0.0, 0.0) for _ in range(5)] for _ in range(2401)]
+        self.Q = [[random.uniform(0.0, 1.0) for _ in range(5)] for _ in range(2401)]
         
         # ---
         
@@ -59,13 +65,32 @@ def act(self, game_state: dict) -> str:
     :param game_state: The dictionary that describes everything on the board.
     :return: The action to take as a string.
     """
+    
+    #
+    # to check, if q table is correctly saved and loaded
+    #
+    #for i in range(len(self.Q)):
+    #    self.logger.debug(f"Q {self.Q[i]}")
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     # todo Exploration vs exploitation
-    random_prob = .1
-    if self.train and random.random() < random_prob:
+    random_prob = .15
+    #if self.train and random.random() < random_prob:
+    if random.random() < random_prob:
         self.logger.debug("Choosing action purely at random.")
         # 80%: walk in any direction. 10% wait. 10% bomb.
         #return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
-        return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .2])
+        return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
 
     self.logger.debug("Querying model for action.")
     
@@ -93,13 +118,17 @@ def act(self, game_state: dict) -> str:
         coin_pos_index = (coin_pos_x - 1 + 7 * (coin_pos_y - 1)) + 1
     
     # 0 <= final_index <= 2400
-    final_index = agent_pos_index * coin_pos_index - 1
+    final_index = agent_pos_index * 48 + coin_pos_index - 1
     actions = self.Q[final_index]
     final_decision = np.argmax(actions)
+    action_chosen = ACTIONS[final_decision]
+    
+    self.logger.debug(f"Action choosen: {action_chosen}")
+    self.logger.debug(f"Q[{final_index}]: {actions}")
    
     #---
     
-    return ACTIONS[final_decision]
+    return  action_chosen
 
 
 def state_to_features(game_state: dict) -> np.array:
