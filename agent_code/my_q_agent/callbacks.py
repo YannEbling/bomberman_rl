@@ -85,8 +85,8 @@ def act(self, game_state: dict) -> str:
     
     # todo Exploration vs exploitation
     random_prob = .15
-    #if self.train and random.random() < random_prob:
-    if random.random() < random_prob:
+    if self.train and random.random() < random_prob:
+    #if random.random() < random_prob:
         self.logger.debug("Choosing action purely at random.")
         # 80%: walk in any direction. 10% wait. 10% bomb.
         #return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])

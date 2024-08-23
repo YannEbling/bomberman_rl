@@ -7,6 +7,7 @@ import events as e
 from .callbacks import state_to_features
 
 import numpy as np
+from main import *
 
 # This is only an example!
 Transition = namedtuple('Transition',
@@ -22,11 +23,11 @@ RECORD_ENEMY_TRANSITIONS = 1.0  # record enemy transitions with probability ...
 # Custom
 
 # Learning rate alpha, 0.0 < alpha < 1.0
-ALPHA = 0.4
+ALPHA = 0.5
 
 
 # Discount factor gamma, 0.0 < gamma < 1.0
-GAMMA = 0.2
+GAMMA = 0.3
 
 
 MyTransition = namedtuple('Transition', ('state', 'action'))
@@ -63,6 +64,8 @@ def setup_training(self):
     self.mytransitions = deque(maxlen=MY_TRANSITION_HISTORY_SIZE)
 
 
+
+
 def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_state: dict, events: List[str]):
     """
     Called once per step to allow intermediate rewards based on game events.
@@ -92,6 +95,9 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #---
     
     
+    #global parser
+    #print(parser)
+
     
     #
     #   Compute State Index of old_game_state
@@ -145,8 +151,6 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     # 0 <= state_index <= 2400
     new_state_index = new_agent_pos_index * 48 + new_coin_pos_index - 1
     
-
-
 
     #
     #   Update Q-value of state-action tupel
@@ -222,14 +226,28 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     # 0 <= state_index <= 2400
     last_state_index = last_agent_pos_index * 48 + last_coin_pos_index - 1   
  
+    last_action_index = action_to_index[last_action]
+
+    #
+    #   Update Q-value of state-action tupel
+    #
+    reward = reward_from_events(self, events)
+    argmax = np.argmax( self.Q[last_state_index] )
+
+    factor1 = ( 1.0 - ALPHA ) * self.Q[last_state_index][ last_action_index]
+    factor2 = GAMMA * self.Q[last_state_index][argmax]
+    factor3 = ALPHA * ( reward + factor2 )
+    new_value = factor1 + factor2 + factor3
+
+    self.Q[last_state_index][last_action_index] = new_value
     #
     #   Update Q-value of state-action tupel
     #
     # set new value
-    r = reward_from_events(self, events)
-    if r > 1.0:
-        for i in range(len(self.Q[last_state_index])):
-            self.Q[last_state_index][i] = r
+    #r = reward_from_events(self, events)
+    #if r > 1.0:
+    #    for i in range(len(self.Q[last_state_index])):
+    #        self.Q[last_state_index][i] = r
 
     #   Debug - coin found?
     for event in events:
