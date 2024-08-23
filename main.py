@@ -11,6 +11,8 @@ from replay import ReplayWorld
 
 ESCAPE_KEYS = (pygame.K_q, pygame.K_ESCAPE)
 
+args = None
+parser = ArgumentParser()
 
 class Timekeeper:
     def __init__(self, interval):
@@ -95,7 +97,6 @@ def world_controller(world, n_rounds, *,
 
 
 def main(argv = None):
-    parser = ArgumentParser()
 
     subparsers = parser.add_subparsers(dest='command_name', required=True)
 
