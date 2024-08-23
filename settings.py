@@ -36,6 +36,10 @@ SCENARIOS = {
     "one-coin": {
         "CRATE_DENSITY": 0,
         "COIN_COUNT": 1
+    },
+    "five-coin": {
+        "CRATE_DENSITY": 0,
+        "COIN_COUNT": 5
     }
 }
 MAX_AGENTS = 4
