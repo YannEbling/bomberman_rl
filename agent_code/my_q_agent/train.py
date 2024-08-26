@@ -9,6 +9,8 @@ from .callbacks import state_to_features
 import numpy as np
 from main import *
 
+from settings import *
+
 # This is only an example!
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
@@ -85,6 +87,10 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     """
     self.logger.debug(f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}')
 
+
+
+    #print(test)
+
     # Idea: Add your own events to hand out rewards
     #if ...:
         #events.append(PLACEHOLDER_EVENT)
@@ -106,7 +112,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     old_agent_pos   = old_game_state["self"][3]
     old_agent_pos_x = old_agent_pos[0]
     old_agent_pos_y = old_agent_pos[1]
-    old_agent_pos_index = (old_agent_pos_x - 1 + 7 * (old_agent_pos_y - 1)) + 1
+    old_agent_pos_index = (old_agent_pos_x - 1 + (COLS - 2) * (old_agent_pos_y - 1)) + 1
     
     # Coin position
     old_coin_pos_index = 1
@@ -115,10 +121,10 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         old_coin_pos   = old_game_state["coins"][0]
         old_coin_pos_x = old_coin_pos[0]
         old_coin_pos_y = old_coin_pos[1]
-        old_coin_pos_index = (old_coin_pos_x - 1 + 7 * (old_coin_pos_y - 1)) + 1
+        old_coin_pos_index = (old_coin_pos_x - 1 + (COLS - 2) * (old_coin_pos_y - 1)) + 1
     
     # 0 <= state_index <= 2400
-    old_state_index = old_agent_pos_index * 48 + old_coin_pos_index - 1
+    old_state_index = old_agent_pos_index * (((COLS - 2) * (COLS - 2)) - 1) + old_coin_pos_index - 1
     
 
     
@@ -137,7 +143,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     new_agent_pos   = new_game_state["self"][3]
     new_agent_pos_x = new_agent_pos[0]
     new_agent_pos_y = new_agent_pos[1]
-    new_agent_pos_index = (new_agent_pos_x - 1 + 7 * (new_agent_pos_y - 1)) + 1
+    new_agent_pos_index = (new_agent_pos_x - 1 + (COLS - 2)  * (new_agent_pos_y - 1)) + 1
     
     # Coin position
     new_coin_pos_index = 1
@@ -146,10 +152,10 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         new_coin_pos   = new_game_state["coins"][0]
         new_coin_pos_x = new_coin_pos[0]
         new_coin_pos_y = new_coin_pos[1]
-        new_coin_pos_index = (new_coin_pos_x - 1 + 7 * (new_coin_pos_y - 1)) + 1
+        new_coin_pos_index = (new_coin_pos_x - 1 + (COLS - 2) * (new_coin_pos_y - 1)) + 1
     
     # 0 <= state_index <= 2400
-    new_state_index = new_agent_pos_index * 48 + new_coin_pos_index - 1
+    new_state_index = new_agent_pos_index * ((COLS - 2) * (COLS - 2) - 1) + new_coin_pos_index - 1
     
 
     #
@@ -212,7 +218,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     last_agent_pos   = last_game_state["self"][3]
     last_agent_pos_x = last_agent_pos[0]
     last_agent_pos_y = last_agent_pos[1]
-    last_agent_pos_index = (last_agent_pos_x - 1 + 7 * (last_agent_pos_y - 1)) + 1
+    last_agent_pos_index = (last_agent_pos_x - 1 + (COLS - 2) * (last_agent_pos_y - 1)) + 1
     
     # Coin position
     last_coin_pos_index = 1
@@ -221,10 +227,10 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         last_coin_pos   = last_game_state["coins"][0]
         last_coin_pos_x = last_coin_pos[0]
         last_coin_pos_y = last_coin_pos[1]
-        last_coin_pos_index = (last_coin_pos_x - 1 + 7 * (last_coin_pos_y - 1)) + 1
+        last_coin_pos_index = (last_coin_pos_x - 1 + (COLS - 2) * (last_coin_pos_y - 1)) + 1
     
     # 0 <= state_index <= 2400
-    last_state_index = last_agent_pos_index * 48 + last_coin_pos_index - 1   
+    last_state_index = last_agent_pos_index * ((COLS - 2) * (COLS - 2) - 1) + last_coin_pos_index - 1
  
     last_action_index = action_to_index[last_action]
 
@@ -267,6 +273,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
 
 
+
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
     self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
 
@@ -274,6 +281,10 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     with open("my-saved-model.pt", "wb") as file:
         pickle.dump(self.Q, file)
 
+    #print(test)
+
+def training_end():
+    pass
 
 def reward_from_events(self, events: List[str]) -> int:
     """

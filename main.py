@@ -11,6 +11,7 @@ from replay import ReplayWorld
 
 ESCAPE_KEYS = (pygame.K_q, pygame.K_ESCAPE)
 
+test = 5
 args = None
 parser = ArgumentParser()
 
@@ -141,7 +142,21 @@ def main(argv = None):
         sub.add_argument("--make-video", const=True, default=False, action='store', nargs='?',
                          help="Make a video from the game")
 
+
+
+    global test
+    test = 66
+    print(test)
+
+
+    global args
     args = parser.parse_args(argv)
+    print(args)
+
+
+
+
+
     if args.command_name == "replay":
         args.no_gui = False
         args.n_rounds = 1

@@ -4,6 +4,8 @@ import random
 
 import numpy as np
 
+from settings import *
+from main import *
 
 #ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
@@ -43,9 +45,8 @@ def setup(self):
         # ---
         
         # for one coin scenario only 
-        # Initialize
-        # For 7x7 agent position in arena states and 7x7 coin position in arena (= 2401 states) containing the 5 chances for the 5 actions
-        self.Q = [[random.uniform(0.0, 1.0) for _ in range(5)] for _ in range(2401)]
+        nr_states = pow(pow((COLS - 2), 2), 2)
+        self.Q = [[random.uniform(0.0, 1.0) for _ in range(5)] for _ in range(nr_states)]
         
         # ---
         
@@ -71,12 +72,6 @@ def act(self, game_state: dict) -> str:
     #
     #for i in range(len(self.Q)):
     #    self.logger.debug(f"Q {self.Q[i]}")
-    
-    
-    
-    
-    
-    
     
     
     
@@ -129,6 +124,8 @@ def act(self, game_state: dict) -> str:
     #---
     
     return  action_chosen
+
+
 
 
 def state_to_features(game_state: dict) -> np.array:
