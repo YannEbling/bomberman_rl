@@ -1,7 +1,7 @@
 import os
 import pickle
 import random
-import time
+from time import sleep, time
 import math
 
 import numpy as np
@@ -53,9 +53,24 @@ def setup(self):
         
         # ---
         
-        # for one coin scenario only 
-        nr_states = pow(cells, 2)
-        self.Q = [[random.uniform(0.0, 1.0) for _ in range(5)] for _ in range(nr_states)]
+        nr_states = pow(cells, 3)
+        print(nr_states)
+        sleep(5)
+        # Define the length of the array
+        array_length = 11390625 * 6
+
+        # Create a NumPy array with random values between 0 and 1 and dtype of float32
+        random_array = np.random.rand(array_length).astype(np.float32)
+        print(len(random_array))
+        print(random_array.shape)
+        for i in random_array:
+            print(i)
+        
+        print(random_array)
+        sleep(10)
+        
+        #self.Q = [[random.uniform(0.0, 1.0) for _ in range(6)] for _ in range(nr_states)]
+        #print(len(self.Q))
         
         # ---
         
@@ -150,7 +165,6 @@ def act(self, game_state: dict) -> str:
     #   Decision Making
     #
     # 0 <= final_index <= 2400
-    #final_index = agent_pos_index * (cells - 1) + coin_pos_index - 1
     
     
     
@@ -158,6 +172,7 @@ def act(self, game_state: dict) -> str:
     
     
     
+    final_index = agent_pos_index * (cells - 1) + coin_pos_index - 1
     
     
     actions = self.Q[final_index]
@@ -220,7 +235,7 @@ def find_closest_crate(game_state: dict):
     agent = game_state["self"]
     field_shape = field.shape
     
-    closest_crate = ...
+    closest_crate = None
     closest_crate_dist = 1.7976931348623157e+308 # max float value
     for x in range(field_shape[0]): # is this x starting at top left?
         for y in range(field_shape[1]): # is this y starting at top left?
