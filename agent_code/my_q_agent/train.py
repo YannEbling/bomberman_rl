@@ -47,7 +47,8 @@ action_to_index = {
     "RIGHT": 1,
     "DOWN": 2,
     "LEFT": 3,
-    "WAIT": 4
+    "WAIT": 4,
+    "BOMB": 5
 }
 
 # For training debugging
@@ -84,13 +85,6 @@ def setup_training(self):
     #---
     self.mytransitions = deque(maxlen=MY_TRANSITION_HISTORY_SIZE)
     
-
-
-
-
-
-    print(id)
-
 
 
 
@@ -255,16 +249,9 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     possible_closest_coin = find_closest_coin(last_game_state)
     last_coin_pos_index = 1
     
-    #if len(last_game_state["coins"]) > 0:
-    #    last_coin_pos   = last_game_state["coins"][0]
-    #    last_coin_pos_x = last_coin_pos[0]
-    #    last_coin_pos_y = last_coin_pos[1]
-    #    last_coin_pos_index = (last_coin_pos_x - 1 + cols * (last_coin_pos_y - 1)) + 1
-    
     if possible_closest_coin != None:
         last_coin_pos_index = (possible_closest_coin[0] - 1 + cols * (possible_closest_coin[1] - 1)) + 1
-    else:
-        print("Couldnt find a coin")
+
     
     
     # 0 <= state_index <= 2400
@@ -282,16 +269,8 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     factor2 = GAMMA * self.Q[last_state_index][argmax]
     factor3 = ALPHA * ( reward + factor2 )
     new_value = factor1 + factor2 + factor3
-
     self.Q[last_state_index][last_action_index] = new_value
-    #
-    #   Update Q-value of state-action tupel
-    #
-    # set new value
-    #r = reward_from_events(self, events)
-    #if r > 1.0:
-    #    for i in range(len(self.Q[last_state_index])):
-    #        self.Q[last_state_index][i] = r
+
 
     #   Debug - coin found?
     for event in events:
@@ -308,9 +287,6 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     global round
     round = round + 1
     self.logger.debug(f"Round nr: {round}")
-
-
-
 
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
     self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
@@ -356,7 +332,10 @@ def reward_from_events(self, events: List[str]) -> int:
         e.MOVED_RIGHT: -0.2,
         e.MOVED_UP: -0.2,
         e.MOVED_DOWN: -0.2,
-        e.MOVED_LEFT: -0.2
+        e.MOVED_LEFT: -0.2,
+        e.BOMB_DROPPED: 0.0,
+        e.CRATE_DESTROYED: 1.0,
+        e.KILLED_SELF: -100.0
         #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
     }
     reward_sum = 0

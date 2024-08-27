@@ -9,8 +9,8 @@ import numpy as np
 from settings import *
 from main import *
 
-#ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
-ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
+ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
+#ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
 
 cols = (COLS - 2)
 cells = pow((COLS - 2), 2)
@@ -92,7 +92,8 @@ def act(self, game_state: dict) -> str:
     if random.random() < RANDOM_ACTION:
         self.logger.debug("Choosing action purely at random.")
         #return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
-        return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
+        #return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
+        return np.random.choice(ACTIONS, p=[.225, .225, .225, .225, .0, .1])
 
     self.logger.debug("Querying model for action.")
     
@@ -108,31 +109,69 @@ def act(self, game_state: dict) -> str:
     agent_pos_y = agent_pos[1]
     agent_pos_index = (agent_pos_x - 1 + cols * (agent_pos_y - 1)) + 1
     
-    possible_closest_coin = find_closest_coin(game_state)
-    coin_pos_index = 1
     
-    #if len(game_state["coins"]) > 0:
-    #    coin_pos = game_state["coins"][0]
-    #    coin_pos_x = coin_pos[0]
-    #    coin_pos_y = coin_pos[1]
-    #    coin_pos_index = (coin_pos_x - 1 + cols * (coin_pos_y - 1)) + 1
     
-    if possible_closest_coin != None:
-        coin_pos = possible_closest_coin
-        coin_pos_x = coin_pos[0]
-        coin_pos_y = coin_pos[1]
-        coin_pos_index = (coin_pos_x - 1 + cols * (coin_pos_y - 1)) + 1
-    else:
-        print("Couldnt find a coin")
     
+    
+    
+    #
+    #   Coin
+    #
+    closest_coin = find_closest_coin(game_state)
+    coin_pos_index = 1  # this could be an issue
+    #print(closest_coin)
+    
+    if closest_coin != None:
+        coin_pos_index = (closest_coin[0] - 1 + cols * (closest_coin[1] - 1)) + 1
+
+    #
+    #   Crate
+    #
+    closest_crate = find_closest_crate(game_state)
+    crate_pos_index = 1  # this could be an issue
+    #print(closest_crate)
+    
+    if closest_crate != None:
+        crate_pos_index = (closest_crate[0] - 1 + cols * (closest_crate[0] - 1)) + 1
+    
+    
+    #
+    #   Bomb
+    #
+    closest_bomb = find_closest_bomb(game_state)
+    bomb_pos_index = 1  # this could be an issue
+    print(closest_bomb)
+    
+    if closest_bomb != None:
+        bomb_pos_index = (closest_bomb[0][0] - 1 + cols * (closest_bomb[0][1] - 1)) + 1
+
+
+    #
+    #   Decision Making
+    #
     # 0 <= final_index <= 2400
-    final_index = agent_pos_index * (cells - 1) + coin_pos_index - 1
+    #final_index = agent_pos_index * (cells - 1) + coin_pos_index - 1
+    
+    
+    
+    
+    
+    
+    
+    
+    
     actions = self.Q[final_index]
     final_decision = np.argmax(actions)
     action_chosen = ACTIONS[final_decision]
     
+    #
+    #   Logging
+    #
     self.logger.debug(f"Action choosen: {action_chosen}")
     self.logger.debug(f"Q[{final_index}]: {actions}")
+   
+    
+   
    
     #---
     return action_chosen
@@ -157,6 +196,43 @@ def find_closest_coin(game_state: dict):
     
     return closest_coin
 
+def find_closest_bomb(game_state: dict):
+    bombs = game_state["bombs"]
+    agent = game_state["self"]
+    
+    if len(bombs) <= 0:
+        return None
+        
+    closest_bomb = bombs[0]
+    closest_bomb_dist = 1.7976931348623157e+308 # max float value
+    for i in range(len(bombs)):
+        bomb_pos = bombs[i][0]
+        agent_pos = agent[3]
+        euclid_dist = math.sqrt(pow((bomb_pos[0] - agent_pos[0]), 2) + pow((bomb_pos[1] - agent_pos[1]), 2))
+        if euclid_dist < closest_bomb_dist:
+            closest_bomb = bombs[i]
+            closest_bomb_dist = euclid_dist
+    
+    return closest_bomb
+    
+def find_closest_crate(game_state: dict):
+    field = game_state["field"]
+    agent = game_state["self"]
+    field_shape = field.shape
+    
+    closest_crate = ...
+    closest_crate_dist = 1.7976931348623157e+308 # max float value
+    for x in range(field_shape[0]): # is this x starting at top left?
+        for y in range(field_shape[1]): # is this y starting at top left?
+            tile = field[x][y]  
+            if tile == 1: # 1 = crate
+                agent_pos = agent[3]
+                euclid_dist = math.sqrt(pow((x - agent_pos[0]), 2) + pow((y - agent_pos[1]), 2))
+                if euclid_dist < closest_crate_dist:
+                    closest_crate = (x, y)
+                    closest_crate_dist = euclid_dist
+    
+    return closest_crate
 
 
 def state_to_features(game_state: dict) -> np.array:
