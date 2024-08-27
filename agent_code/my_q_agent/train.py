@@ -149,7 +149,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     if old_possible_closest_coin != None:
         old_coin_pos_index = (old_possible_closest_coin[0] - 1 + cols * (old_possible_closest_coin[1] - 1)) + 1
     else:
-        print("Couldnt find a coin")
+        pass
+        #print("Couldnt find a coin")
         
     # 0 <= state_index <= 2400
     old_state_index = old_agent_pos_index * (cells - 1) + old_coin_pos_index - 1
