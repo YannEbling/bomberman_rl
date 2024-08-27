@@ -1,6 +1,8 @@
 import os
 import pickle
 import random
+import time
+import math
 
 import numpy as np
 
@@ -10,6 +12,10 @@ from main import *
 #ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
 
+cols = (COLS - 2)
+cells = pow((COLS - 2), 2)
+
+RANDOM_ACTION = .15
 
 def setup(self):
     """
@@ -26,17 +32,20 @@ def setup(self):
     :param self: This object is passed to all callbacks and you can set arbitrary values.
     """
     
+    #
+    #   Time Analysis
+    #
+
     
     #
     #   For Retraining Existing Model
     #
-    #if self.train and os.path.isfile("my-saved-model.pt"):
-    #    print("Continue training model from saved state.")
-    #    with open("my-saved-model.pt", "rb") as file:
-    #        self.Q = pickle.load(file)        
-    #elif self.train or not os.path.isfile("my-saved-model.pt"):
-    
-    if self.train or not os.path.isfile("my-saved-model.pt"):
+    if self.train and os.path.isfile("my-saved-model.pt"):
+        print("Continue training model from saved state.")
+        with open("my-saved-model.pt", "rb") as file:
+            self.Q = pickle.load(file)        
+    elif self.train or not os.path.isfile("my-saved-model.pt"):
+    #if self.train or not os.path.isfile("my-saved-model.pt"):
         self.logger.info("Setting up model from scratch.")
         print("Setting up model from scratch.")
         weights = np.random.rand(len(ACTIONS))
@@ -45,7 +54,7 @@ def setup(self):
         # ---
         
         # for one coin scenario only 
-        nr_states = pow(pow((COLS - 2), 2), 2)
+        nr_states = pow(cells, 2)
         self.Q = [[random.uniform(0.0, 1.0) for _ in range(5)] for _ in range(nr_states)]
         
         # ---
@@ -79,11 +88,9 @@ def act(self, game_state: dict) -> str:
     
     
     # todo Exploration vs exploitation
-    random_prob = .15
-    if self.train and random.random() < random_prob:
-    #if random.random() < random_prob:
+    #if self.train and random.random() < RANDOM_ACTION:
+    if random.random() < RANDOM_ACTION:
         self.logger.debug("Choosing action purely at random.")
-        # 80%: walk in any direction. 10% wait. 10% bomb.
         #return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
         return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
 
@@ -96,24 +103,30 @@ def act(self, game_state: dict) -> str:
     # 'self': (str, int, bool, (int, int))
     
     
-    # (1,1) <= agent_position <= (7,7) = 1 <= index <= 49
     agent_pos = game_state["self"][3]
     agent_pos_x = agent_pos[0]
     agent_pos_y = agent_pos[1]
-    agent_pos_index = (agent_pos_x - 1 + 7 * (agent_pos_y - 1)) + 1
+    agent_pos_index = (agent_pos_x - 1 + cols * (agent_pos_y - 1)) + 1
     
-    
-    
+    possible_closest_coin = find_closest_coin(game_state)
     coin_pos_index = 1
     
-    if len(game_state["coins"]) > 0:
-        coin_pos = game_state["coins"][0]
+    #if len(game_state["coins"]) > 0:
+    #    coin_pos = game_state["coins"][0]
+    #    coin_pos_x = coin_pos[0]
+    #    coin_pos_y = coin_pos[1]
+    #    coin_pos_index = (coin_pos_x - 1 + cols * (coin_pos_y - 1)) + 1
+    
+    if possible_closest_coin != None:
+        coin_pos = possible_closest_coin
         coin_pos_x = coin_pos[0]
         coin_pos_y = coin_pos[1]
-        coin_pos_index = (coin_pos_x - 1 + 7 * (coin_pos_y - 1)) + 1
+        coin_pos_index = (coin_pos_x - 1 + cols * (coin_pos_y - 1)) + 1
+    else:
+        print("Couldnt find a coin")
     
     # 0 <= final_index <= 2400
-    final_index = agent_pos_index * 48 + coin_pos_index - 1
+    final_index = agent_pos_index * (cells - 1) + coin_pos_index - 1
     actions = self.Q[final_index]
     final_decision = np.argmax(actions)
     action_chosen = ACTIONS[final_decision]
@@ -122,9 +135,27 @@ def act(self, game_state: dict) -> str:
     self.logger.debug(f"Q[{final_index}]: {actions}")
    
     #---
-    
-    return  action_chosen
+    return action_chosen
 
+
+def find_closest_coin(game_state: dict):
+    coins = game_state["coins"]
+    agent = game_state["self"]
+    
+    if len(coins) <= 0:
+        return None
+        
+    closest_coin = coins[0]
+    closest_coin_dist = 1.7976931348623157e+308 # max float value
+    for i in range(len(coins)):
+        coin_pos = coins[i]
+        agent_pos = agent[3]
+        euclid_dist = math.sqrt(pow((coin_pos[0] - agent_pos[0]), 2) + pow((coin_pos[1] - agent_pos[1]), 2))
+        if euclid_dist < closest_coin_dist:
+            closest_coin = coins[i]
+            closest_coin_dist = euclid_dist
+    
+    return closest_coin
 
 
 

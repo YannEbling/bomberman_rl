@@ -6,12 +6,12 @@ from fallbacks import pygame
 # Game properties
 # board size (a smaller board may be useful at the beginning)
 # WARNING: current my_q_agent requires square board
-#COLS = 17
-#ROWS = 17
+COLS = 17
+ROWS = 17
 
 # smaller board size for the Walker Agent
-COLS = 9
-ROWS = 9
+#COLS = 9
+#ROWS = 9
 
 SCENARIOS = {
     # modes useful for agent development

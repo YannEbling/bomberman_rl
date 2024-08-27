@@ -5,9 +5,12 @@ from typing import List
 
 import events as e
 from .callbacks import state_to_features
+from .callbacks import find_closest_coin
 
 import numpy as np
 from main import *
+
+import time
 
 from settings import *
 
@@ -27,11 +30,11 @@ RECORD_ENEMY_TRANSITIONS = 1.0  # record enemy transitions with probability ...
 # Custom
 
 # Learning rate alpha, 0.0 < alpha < 1.0
-ALPHA = 0.5
+ALPHA = 0.4
 
 
 # Discount factor gamma, 0.0 < gamma < 1.0
-GAMMA = 0.3
+GAMMA = 0.2
 
 
 MyTransition = namedtuple('Transition', ('state', 'action'))
@@ -53,6 +56,15 @@ round = 0
 
 id = os.getpid()
 
+# convert setting values to used values in training
+cols = (COLS - 2)
+cells = pow((COLS - 2), 2)
+
+# Execution Time Analysis
+
+# Saving data every round is costly, save only every n rounds
+SAVE_INTERVAL = 100
+save_counter = 0
 
 def setup_training(self):
     """
@@ -62,12 +74,16 @@ def setup_training(self):
 
     :param self: This object is passed to all callbacks and you can set arbitrary values.
     """
+
+    
+    
     # Example: Setup an array that will note transition tuples
     # (s, a, r, s')
     self.transitions = deque(maxlen=TRANSITION_HISTORY_SIZE)
     
     #---
     self.mytransitions = deque(maxlen=MY_TRANSITION_HISTORY_SIZE)
+    
 
 
 
@@ -99,6 +115,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
 
 
+
+
     #print(test)
 
     # Idea: Add your own events to hand out rewards
@@ -122,19 +140,19 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     old_agent_pos   = old_game_state["self"][3]
     old_agent_pos_x = old_agent_pos[0]
     old_agent_pos_y = old_agent_pos[1]
-    old_agent_pos_index = (old_agent_pos_x - 1 + (COLS - 2) * (old_agent_pos_y - 1)) + 1
+    old_agent_pos_index = (old_agent_pos_x - 1 + cols * (old_agent_pos_y - 1)) + 1
     
     # Coin position
+    old_possible_closest_coin = find_closest_coin(old_game_state)
     old_coin_pos_index = 1
-    
-    if len(old_game_state["coins"]) > 0:
-        old_coin_pos   = old_game_state["coins"][0]
-        old_coin_pos_x = old_coin_pos[0]
-        old_coin_pos_y = old_coin_pos[1]
-        old_coin_pos_index = (old_coin_pos_x - 1 + (COLS - 2) * (old_coin_pos_y - 1)) + 1
-    
+     
+    if old_possible_closest_coin != None:
+        old_coin_pos_index = (old_possible_closest_coin[0] - 1 + cols * (old_possible_closest_coin[1] - 1)) + 1
+    else:
+        print("Couldnt find a coin")
+        
     # 0 <= state_index <= 2400
-    old_state_index = old_agent_pos_index * (((COLS - 2) * (COLS - 2)) - 1) + old_coin_pos_index - 1
+    old_state_index = old_agent_pos_index * (cells - 1) + old_coin_pos_index - 1
     
 
     
@@ -153,19 +171,19 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     new_agent_pos   = new_game_state["self"][3]
     new_agent_pos_x = new_agent_pos[0]
     new_agent_pos_y = new_agent_pos[1]
-    new_agent_pos_index = (new_agent_pos_x - 1 + (COLS - 2)  * (new_agent_pos_y - 1)) + 1
+    new_agent_pos_index = (new_agent_pos_x - 1 + cols  * (new_agent_pos_y - 1)) + 1
     
     # Coin position
+    new_possible_closest_coin = find_closest_coin(new_game_state)
     new_coin_pos_index = 1
     
-    if len(new_game_state["coins"]) > 0:
-        new_coin_pos   = new_game_state["coins"][0]
-        new_coin_pos_x = new_coin_pos[0]
-        new_coin_pos_y = new_coin_pos[1]
-        new_coin_pos_index = (new_coin_pos_x - 1 + (COLS - 2) * (new_coin_pos_y - 1)) + 1
+    if new_possible_closest_coin != None:
+        new_coin_pos_index = (new_possible_closest_coin[0] - 1 + cols * (new_possible_closest_coin[1] - 1)) + 1
+    else:
+        print("Couldnt find a coin")
     
     # 0 <= state_index <= 2400
-    new_state_index = new_agent_pos_index * ((COLS - 2) * (COLS - 2) - 1) + new_coin_pos_index - 1
+    new_state_index = new_agent_pos_index * (cells - 1) + new_coin_pos_index - 1
     
 
     #
@@ -197,12 +215,11 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     
     self.logger.debug(f"new q value before update: {self.Q[old_state_index][old_action_index]}")
     
-    #print(events)
-    
-    
     
     
     self.mytransitions.append(MyTransition(new_game_state, self_action))
+    
+   
     
     #---
 
@@ -221,6 +238,9 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     :param self: The same object that is passed to all of your callbacks.
     """
 
+    training_time = time.time()
+
+
     #
     #   Compute State Index of new_game_state
     #
@@ -228,19 +248,26 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     last_agent_pos   = last_game_state["self"][3]
     last_agent_pos_x = last_agent_pos[0]
     last_agent_pos_y = last_agent_pos[1]
-    last_agent_pos_index = (last_agent_pos_x - 1 + (COLS - 2) * (last_agent_pos_y - 1)) + 1
+    last_agent_pos_index = (last_agent_pos_x - 1 + cols * (last_agent_pos_y - 1)) + 1
     
     # Coin position
+    possible_closest_coin = find_closest_coin(last_game_state)
     last_coin_pos_index = 1
     
-    if len(last_game_state["coins"]) > 0:
-        last_coin_pos   = last_game_state["coins"][0]
-        last_coin_pos_x = last_coin_pos[0]
-        last_coin_pos_y = last_coin_pos[1]
-        last_coin_pos_index = (last_coin_pos_x - 1 + (COLS - 2) * (last_coin_pos_y - 1)) + 1
+    #if len(last_game_state["coins"]) > 0:
+    #    last_coin_pos   = last_game_state["coins"][0]
+    #    last_coin_pos_x = last_coin_pos[0]
+    #    last_coin_pos_y = last_coin_pos[1]
+    #    last_coin_pos_index = (last_coin_pos_x - 1 + cols * (last_coin_pos_y - 1)) + 1
+    
+    if possible_closest_coin != None:
+        last_coin_pos_index = (possible_closest_coin[0] - 1 + cols * (possible_closest_coin[1] - 1)) + 1
+    else:
+        print("Couldnt find a coin")
+    
     
     # 0 <= state_index <= 2400
-    last_state_index = last_agent_pos_index * ((COLS - 2) * (COLS - 2) - 1) + last_coin_pos_index - 1
+    last_state_index = last_agent_pos_index * (cells - 1) + last_coin_pos_index - 1
  
     last_action_index = action_to_index[last_action]
 
@@ -274,8 +301,8 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     print(f"Coins collected: {coins_collected}")
 
 
-    for i in range(len(self.Q)):
-        self.logger.debug(self.Q[i])
+    #for i in range(len(self.Q)):
+    #    self.logger.debug(self.Q[i])
 
     global round
     round = round + 1
@@ -295,10 +322,18 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         with open("my-saved-model.pt", "wb") as file:
             pickle.dump(self.Q, file)
 
-    #print(test)
+    #
+    #   Execution Time Analysis
+    #
+    exec_time = time.time() - training_time
+    print(f"Execution time for function \"game_events_occurred\": {exec_time:.6f} seconds")
+    self.logger.debug(f"Execution time for function \"game_events_occurred\": {exec_time} seconds")
+ 
 
 def training_end():
     pass
+    
+   
 
 def reward_from_events(self, events: List[str]) -> int:
     """
@@ -313,14 +348,14 @@ def reward_from_events(self, events: List[str]) -> int:
     
     
     game_rewards = {
-        e.COIN_COLLECTED: 10,
+        e.COIN_COLLECTED: 15,
         #e.KILLED_OPPONENT: 5,
-        e.WAITED: -0.1,
-        e.INVALID_ACTION: -0.1,
-        e.MOVED_RIGHT: -0.1,
-        e.MOVED_UP: -0.1,
-        e.MOVED_DOWN: -0.1,
-        e.MOVED_LEFT: -0.1
+        e.WAITED: -0.8,
+        e.INVALID_ACTION: -3.2,
+        e.MOVED_RIGHT: -0.2,
+        e.MOVED_UP: -0.2,
+        e.MOVED_DOWN: -0.2,
+        e.MOVED_LEFT: -0.2
         #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
     }
     reward_sum = 0
