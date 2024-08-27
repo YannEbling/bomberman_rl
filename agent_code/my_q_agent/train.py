@@ -11,6 +11,8 @@ from main import *
 
 from settings import *
 
+import os
+
 # This is only an example!
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
@@ -49,6 +51,8 @@ action_to_index = {
 coins_collected = 0
 round = 0
 
+id = os.getpid()
+
 
 def setup_training(self):
     """
@@ -64,6 +68,12 @@ def setup_training(self):
     
     #---
     self.mytransitions = deque(maxlen=MY_TRANSITION_HISTORY_SIZE)
+
+
+
+
+
+    print(id)
 
 
 
@@ -278,8 +288,12 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
 
     # Store the model
-    with open("my-saved-model.pt", "wb") as file:
-        pickle.dump(self.Q, file)
+    if os.path.isfile("./mp/mp.hky"):
+        with open(f"mp/data/my-saved-model{id}.pt", "wb") as file:
+            pickle.dump(self.Q, file)
+    else:
+        with open("my-saved-model.pt", "wb") as file:
+            pickle.dump(self.Q, file)
 
     #print(test)
 

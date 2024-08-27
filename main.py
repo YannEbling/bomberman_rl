@@ -144,14 +144,7 @@ def main(argv = None):
 
 
 
-    global test
-    test = 66
-    print(test)
-
-
-    global args
     args = parser.parse_args(argv)
-    print(args)
 
 
 
