@@ -18,7 +18,7 @@ from fallbacks import pygame
 from items import Coin, Explosion, Bomb
 
 WorldArgs = namedtuple("WorldArgs",
-                       ["no_gui", "fps", "turn_based", "update_interval", "save_replay", "replay", "make_video", "continue_without_training", "log_dir", "save_stats", "match_name", "seed", "silence_errors", "scenario"])
+                       ["no_gui", "fps", "turn_based", "update_interval", "save_replay", "replay", "make_video", "continue_without_training", "log_dir", "save_stats", "match_name", "seed", "silence_errors", "scenario", "dim_reduce"])
 
 
 class Trophy:

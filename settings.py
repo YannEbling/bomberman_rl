@@ -5,12 +5,12 @@ from fallbacks import pygame
 
 # Game properties
 # board size (a smaller board may be useful at the beginning)
-#COLS = 17
-#ROWS = 17
+COLS = 17
+ROWS = 17
 
 # smaller board size for the Walker Agent
-COLS = 9
-ROWS = 9
+#COLS = 9
+#ROWS = 9
 
 SCENARIOS = {
     # modes useful for agent development
@@ -83,3 +83,6 @@ LOG_GAME = logging.INFO
 LOG_AGENT_WRAPPER = logging.INFO
 LOG_AGENT_CODE = logging.DEBUG
 LOG_MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
+
+# additional global variable
+DIM_REDUCE = True
