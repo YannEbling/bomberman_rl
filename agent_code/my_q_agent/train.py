@@ -6,6 +6,8 @@ from typing import List
 import events as e
 from .callbacks import state_to_features
 from .callbacks import find_closest_coin
+from .callbacks import find_closest_bomb
+from .callbacks import find_closest_crate
 
 import numpy as np
 from main import *
@@ -108,11 +110,6 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     self.logger.debug(f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}')
 
 
-
-
-
-    #print(test)
-
     # Idea: Add your own events to hand out rewards
     #if ...:
         #events.append(PLACEHOLDER_EVENT)
@@ -120,40 +117,72 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     # state_to_features is defined in callbacks.py
     self.transitions.append(Transition(state_to_features(old_game_state), self_action, state_to_features(new_game_state), reward_from_events(self, events)))
     
-    #---
+
+    #
+    #
+    #   ---   Compute State Index of old_game_state 
+    #
+    #
     
     
-    #global parser
-    #print(parser)
+    #
+    #   Agent
+    #
+    old_agent_pos = old_game_state["self"][3]
+    old_agent_pos_index = (old_agent_pos[0] - 1 + cols * (old_agent_pos[1] - 1)) + 1
+        
 
     
+        
+        
     #
-    #   Compute State Index of old_game_state
+    #   Coin
     #
-    # (1,1) <= agent_position <= (7,7) = 1 <= index <= 49
-    old_agent_pos   = old_game_state["self"][3]
-    old_agent_pos_x = old_agent_pos[0]
-    old_agent_pos_y = old_agent_pos[1]
-    old_agent_pos_index = (old_agent_pos_x - 1 + cols * (old_agent_pos_y - 1)) + 1
-    
-    # Coin position
-    old_possible_closest_coin = find_closest_coin(old_game_state)
-    old_coin_pos_index = 1
-     
-    if old_possible_closest_coin != None:
-        old_coin_pos_index = (old_possible_closest_coin[0] - 1 + cols * (old_possible_closest_coin[1] - 1)) + 1
+    old_closest_coin = find_closest_coin(old_game_state)
+    old_coin_pos_index = 1  # this could be an issue
+    if old_closest_coin != None:
+        old_coin_pos_index = (old_closest_coin[0] - 1 + cols * (old_closest_coin[1] - 1)) + 1
+
+
+    #
+    #   Crate
+    #
+    old_closest_crate = find_closest_crate(old_game_state)
+    old_crate_pos_index = 1  # this could be an issue
+    if old_closest_crate != None:
+        old_crate_pos_index = (old_closest_crate[0] - 1 + cols * (old_closest_crate[0] - 1)) + 1
+
+
+    #
+    #   Bomb
+    #
+    old_closest_bomb = find_closest_bomb(old_game_state)
+    old_bomb_pos_index = 1  # this could be an issue
+    if old_closest_bomb != None:
+        old_bomb_pos_index = (old_closest_bomb[0][0] - 1 + cols * (old_closest_bomb[0][1] - 1)) + 1
     else:
         pass
-        #print("Couldnt find a coin")
+        # todo: what if there is no bomb?
         
-    # 0 <= state_index <= 2400
-    old_state_index = old_agent_pos_index * (cells - 1) + old_coin_pos_index - 1
+    #
+    #   Compute Pull Factor
+    #
+    old_pull_index = 1
+    if old_closest_coin == None and old_closest_crate != None:  # only crate, use crate index
+        old_pull_index = old_crate_pos_index
+    elif old_closest_coin != None and old_closest_crate == None: # only coin, use coin index
+        old_pull_index = old_coin_pos_index
+    elif old_closest_coin != None and old_closest_crate != None: # crate and coin, prefer coin over crate
+        old_pull_index = old_coin_pos_index
+        
     
+ 
+        
+    #   Compute Index
+    #old_state_index = old_agent_pos_index * (cells - 1) + old_coin_pos_index - 1
+    old_state_index = old_agent_pos_index * (cells - 1) + old_pull_index * (cols - 1) + old_bomb_pos_index - 1      # is this correct?
 
-    
-    #
     #   Compute Action Index of old_game_state
-    #
     old_action_index = action_to_index[self_action]
     
     
@@ -163,23 +192,94 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #   Compute State Index of new_game_state
     #
     # (1,1) <= agent_position <= (7,7) = 1 <= index <= 49
-    new_agent_pos   = new_game_state["self"][3]
-    new_agent_pos_x = new_agent_pos[0]
-    new_agent_pos_y = new_agent_pos[1]
-    new_agent_pos_index = (new_agent_pos_x - 1 + cols  * (new_agent_pos_y - 1)) + 1
+    #new_agent_pos   = new_game_state["self"][3]
+    #new_agent_pos_x = new_agent_pos[0]
+    #new_agent_pos_y = new_agent_pos[1]
+    #new_agent_pos_index = (new_agent_pos_x - 1 + cols  * (new_agent_pos_y - 1)) + 1
     
     # Coin position
-    new_possible_closest_coin = find_closest_coin(new_game_state)
-    new_coin_pos_index = 1
+    #new_possible_closest_coin = find_closest_coin(new_game_state)
+    #new_coin_pos_index = 1
     
-    if new_possible_closest_coin != None:
-        new_coin_pos_index = (new_possible_closest_coin[0] - 1 + cols * (new_possible_closest_coin[1] - 1)) + 1
+    #if new_possible_closest_coin != None:
+    #    new_coin_pos_index = (new_possible_closest_coin[0] - 1 + cols * (new_possible_closest_coin[1] - 1)) + 1
+    #else:
+        #print("Couldnt find a coin")
+    
+    
+    #
+    #
+    #   ---   Compute State Index of new_game_state
+    #
+    #
+    
+    #
+    #   Agent
+    #
+    new_agent_pos = new_game_state["self"][3]
+    new_agent_pos_index = (new_agent_pos[0] - 1 + cols * (new_agent_pos[1] - 1)) + 1
+    
+    
+        
+        
+    #
+    #   Coin
+    #
+    new_closest_coin = find_closest_coin(new_game_state)
+    new_coin_pos_index = 1  # this could be an issue
+    if new_closest_coin != None:
+        new_coin_pos_index = (new_closest_coin[0] - 1 + cols * (new_closest_coin[1] - 1)) + 1
+
+
+    #
+    #   Crate
+    #
+    new_closest_crate = find_closest_crate(new_game_state)
+    new_crate_pos_index = 1  # this could be an issue
+    if new_closest_crate != None:
+        new_crate_pos_index = (new_closest_crate[0] - 1 + cols * (new_closest_crate[0] - 1)) + 1
+
+
+    #
+    #   Bomb
+    #
+    new_closest_bomb = find_closest_bomb(new_game_state)
+    new_bomb_pos_index = 1  # this could be an issue
+    if new_closest_bomb != None:
+        new_bomb_pos_index = (new_closest_bomb[0][0] - 1 + cols * (new_closest_bomb[0][1] - 1)) + 1
     else:
-        print("Couldnt find a coin")
+        pass
+        # todo: what if there is no bomb?
+        
+        
+        
+    #
+    #   Compute Pull Factor
+    #
+    new_pull_index = 1
+    if new_closest_coin == None and new_closest_crate != None:  # only crate, use crate index
+        new_pull_index = new_crate_pos_index
+    elif new_closest_coin != None and new_closest_crate == None: # only coin, use coin index
+        new_pull_index = new_coin_pos_index
+    elif new_closest_coin != None and new_closest_crate != None: # crate and coin, prefer coin over crate
+        new_pull_index = new_coin_pos_index
+        
+          
+        
     
-    # 0 <= state_index <= 2400
-    new_state_index = new_agent_pos_index * (cells - 1) + new_coin_pos_index - 1
     
+    #   Compute Index
+    #new_state_index = new_agent_pos_index * (cells - 1) + new_coin_pos_index - 1
+    new_state_index = new_agent_pos_index * (cells - 1) + new_pull_index * (cols - 1) + new_bomb_pos_index - 1      # is this correct?
+
+
+
+
+
+
+
+
+
 
     #
     #   Update Q-value of state-action tupel
@@ -193,30 +293,27 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #factor2 = ALPHA * reward
     #factor3 = ALPHA * GAMMA * np.argmax( self.Q[new_state_index] )
     
-    self.logger.debug(f"np.argmax: {np.argmax(self.Q[new_state_index])}")
-    self.logger.debug(f"np.argmax value: {self.Q[new_state_index][argmax]}")
+    #
+    #   Logging
+    #
+    #self.logger.debug(f"np.argmax: {np.argmax(self.Q[new_state_index])}")
+    #self.logger.debug(f"np.argmax value: {self.Q[new_state_index][argmax]}")
+    #self.logger.debug(f"factor1 :{factor1}")
+    #self.logger.debug(f"factor2 :{factor2}")
+    #self.logger.debug(f"factor3 :{factor3}")
+    #self.logger.debug(f"old q value before update: {self.Q[old_state_index][old_action_index]}")
     
-    self.logger.debug(f"factor1 :{factor1}")
-    self.logger.debug(f"factor2 :{factor2}")
-    self.logger.debug(f"factor3 :{factor3}")
-    
-    self.logger.debug(f"old q value before update: {self.Q[old_state_index][old_action_index]}")
     new_value = factor1 + factor2 + factor3
-    self.logger.debug(f"new q value: {new_value}")
-    self.logger.debug(f"reward: {reward}")
+    #self.logger.debug(f"new q value: {new_value}")
+    #self.logger.debug(f"reward: {reward}")
     
     # set new value
     self.Q[old_state_index][old_action_index] = new_value
     
-    self.logger.debug(f"new q value before update: {self.Q[old_state_index][old_action_index]}")
-    
-    
+    #self.logger.debug(f"new q value before update: {self.Q[old_state_index][old_action_index]}")
     
     self.mytransitions.append(MyTransition(new_game_state, self_action))
     
-   
-    
-    #---
 
 
 def end_of_round(self, last_game_state: dict, last_action: str, events: List[str]):
@@ -237,25 +334,71 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
 
     #
-    #   Compute State Index of new_game_state
     #
-    # (1,1) <= agent_position <= (7,7) = 1 <= index <= 49
-    last_agent_pos   = last_game_state["self"][3]
-    last_agent_pos_x = last_agent_pos[0]
-    last_agent_pos_y = last_agent_pos[1]
-    last_agent_pos_index = (last_agent_pos_x - 1 + cols * (last_agent_pos_y - 1)) + 1
+    #   ---   Compute State Index of last_game_state
+    #
+    #
     
-    # Coin position
-    possible_closest_coin = find_closest_coin(last_game_state)
-    last_coin_pos_index = 1
+    #
+    #   Agent
+    #
+    last_agent_pos = last_game_state["self"][3]
+    last_agent_pos_index = (last_agent_pos[0] - 1 + cols * (last_agent_pos[1] - 1)) + 1
     
-    if possible_closest_coin != None:
-        last_coin_pos_index = (possible_closest_coin[0] - 1 + cols * (possible_closest_coin[1] - 1)) + 1
+    
+        
+        
+    #
+    #   Coin
+    #
+    last_closest_coin = find_closest_coin(last_game_state)
+    last_coin_pos_index = 1  # this could be an issue
+    if last_closest_coin != None:
+        last_coin_pos_index = (last_closest_coin[0] - 1 + cols * (last_closest_coin[1] - 1)) + 1
 
+
+    #
+    #   Crate
+    #
+    last_closest_crate = find_closest_crate(last_game_state)
+    last_crate_pos_index = 1  # this could be an issue
+    if last_closest_crate != None:
+        last_crate_pos_index = (last_closest_crate[0] - 1 + cols * (last_closest_crate[0] - 1)) + 1
+
+
+    #
+    #   Bomb
+    #
+    last_closest_bomb = find_closest_bomb(last_game_state)
+    last_bomb_pos_index = 1  # this could be an issue
+    if last_closest_bomb != None:
+        last_bomb_pos_index = (last_closest_bomb[0][0] - 1 + cols * (last_closest_bomb[0][1] - 1)) + 1
+    else:
+        pass
+        # todo: what if there is no bomb?
+        
+        
+        
+    #
+    #   Compute Pull Factor
+    #
+    last_pull_index = 1
+    if last_closest_coin == None and last_closest_crate != None:  # only crate, use crate index
+        last_pull_index = last_crate_pos_index
+    elif last_closest_coin != None and last_closest_crate == None: # only coin, use coin index
+        last_pull_index = last_coin_pos_index
+    elif last_closest_coin != None and last_closest_crate != None: # crate and coin, prefer coin over crate
+        last_pull_index = last_coin_pos_index
+        
+          
+        
     
     
-    # 0 <= state_index <= 2400
-    last_state_index = last_agent_pos_index * (cells - 1) + last_coin_pos_index - 1
+    #   Compute Index
+    #last_state_index = last_agent_pos_index * (cells - 1) + last_coin_pos_index - 1
+    last_state_index = last_agent_pos_index * (cells - 1) + last_pull_index * (cols - 1) + last_bomb_pos_index - 1      # is this correct?
+
+
  
     last_action_index = action_to_index[last_action]
 
@@ -265,7 +408,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     reward = reward_from_events(self, events)
     argmax = np.argmax( self.Q[last_state_index] )
 
-    factor1 = ( 1.0 - ALPHA ) * self.Q[last_state_index][ last_action_index]
+    factor1 = ( 1.0 - ALPHA ) * self.Q[last_state_index][last_action_index]
     factor2 = GAMMA * self.Q[last_state_index][argmax]
     factor3 = ALPHA * ( reward + factor2 )
     new_value = factor1 + factor2 + factor3

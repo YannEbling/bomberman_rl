@@ -54,23 +54,8 @@ def setup(self):
         # ---
         
         nr_states = pow(cells, 3)
-        print(nr_states)
-        sleep(5)
-        # Define the length of the array
-        array_length = 11390625 * 6
-
-        # Create a NumPy array with random values between 0 and 1 and dtype of float32
-        random_array = np.random.rand(array_length).astype(np.float32)
-        print(len(random_array))
-        print(random_array.shape)
-        for i in random_array:
-            print(i)
+        self.Q = np.random.rand(nr_states, len(ACTIONS)).astype(np.float32)
         
-        print(random_array)
-        sleep(10)
-        
-        #self.Q = [[random.uniform(0.0, 1.0) for _ in range(6)] for _ in range(nr_states)]
-        #print(len(self.Q))
         
         # ---
         
@@ -97,17 +82,12 @@ def act(self, game_state: dict) -> str:
     #for i in range(len(self.Q)):
     #    self.logger.debug(f"Q {self.Q[i]}")
     
-    
-    
-    
-    
+  
     
     # todo Exploration vs exploitation
     #if self.train and random.random() < RANDOM_ACTION:
     if random.random() < RANDOM_ACTION:
         self.logger.debug("Choosing action purely at random.")
-        #return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
-        #return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
         return np.random.choice(ACTIONS, p=[.225, .225, .225, .225, .0, .1])
 
     self.logger.debug("Querying model for action.")
@@ -117,65 +97,59 @@ def act(self, game_state: dict) -> str:
     #---
     # Get Q vector for current player position and coin position 
     # 'self': (str, int, bool, (int, int))
-    
-    
     agent_pos = game_state["self"][3]
-    agent_pos_x = agent_pos[0]
-    agent_pos_y = agent_pos[1]
-    agent_pos_index = (agent_pos_x - 1 + cols * (agent_pos_y - 1)) + 1
-    
-    
-    
-    
-    
+    agent_pos_index = (agent_pos[0] - 1 + cols * (agent_pos[0] - 1)) + 1
+
     
     #
     #   Coin
     #
     closest_coin = find_closest_coin(game_state)
     coin_pos_index = 1  # this could be an issue
-    #print(closest_coin)
-    
     if closest_coin != None:
         coin_pos_index = (closest_coin[0] - 1 + cols * (closest_coin[1] - 1)) + 1
+
 
     #
     #   Crate
     #
     closest_crate = find_closest_crate(game_state)
     crate_pos_index = 1  # this could be an issue
-    #print(closest_crate)
-    
     if closest_crate != None:
         crate_pos_index = (closest_crate[0] - 1 + cols * (closest_crate[0] - 1)) + 1
-    
-    
+
+
     #
     #   Bomb
     #
     closest_bomb = find_closest_bomb(game_state)
     bomb_pos_index = 1  # this could be an issue
-    print(closest_bomb)
-    
     if closest_bomb != None:
         bomb_pos_index = (closest_bomb[0][0] - 1 + cols * (closest_bomb[0][1] - 1)) + 1
-
+    else:
+        pass
+        # todo: what if there is no bomb?
 
     #
     #   Decision Making
     #
-    # 0 <= final_index <= 2400
+    
+    pull_index = 1
+    if closest_coin == None and closest_crate != None:  # only crate, use crate index
+        pull_index = crate_pos_index
+    elif closest_coin != None and closest_crate == None: # only coin, use coin index
+        pull_index = coin_pos_index
+    elif closest_coin != None and closest_crate != None: # crate and coin, prefer coin over crate
+        pull_index = coin_pos_index
+        
     
     
     
-    
-    
-    
-    
-    final_index = agent_pos_index * (cells - 1) + coin_pos_index - 1
-    
-    
-    actions = self.Q[final_index]
+    #
+    #   Compute Index
+    #
+    state_index = agent_pos_index * (cells - 1) + pull_index * (cols - 1) + bomb_pos_index - 1      # is this correct?
+    actions = self.Q[state_index]
     final_decision = np.argmax(actions)
     action_chosen = ACTIONS[final_decision]
     
@@ -183,12 +157,8 @@ def act(self, game_state: dict) -> str:
     #   Logging
     #
     self.logger.debug(f"Action choosen: {action_chosen}")
-    self.logger.debug(f"Q[{final_index}]: {actions}")
+    self.logger.debug(f"Q[{state_index}]: {actions}")
    
-    
-   
-   
-    #---
     return action_chosen
 
 

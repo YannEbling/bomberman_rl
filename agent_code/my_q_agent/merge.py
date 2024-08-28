@@ -15,30 +15,29 @@ def load(files, dir):
     return matrices
 
 def merge(matrices):
-    target = []
 
     mats = len(matrices)
     cols = len(matrices[0])
     rows = len(matrices[0][0])
+    
+    target = np.zeros((cols, rows))
 
     print(f"mats {mats}")
     print(f"cols {cols}")
     print(f"rows {rows}")
 
     for i in range(cols):
-        target.append([])
         for j in range(rows):
             sum = 0.0
             for k in range(mats):
                 sum += matrices[k][i][j]
-            target[i].append(sum / mats)
+            target[i, j] = sum / mats
 
     print(type(matrices))
     print(type(matrices[0]))
     print(type(matrices[0][0]))
     print(type(matrices[0][0][0]))
 
-    #print(target)
     return target
 
 
@@ -63,7 +62,7 @@ def list_files(directory):
         return []
 
 # argv[0] = number of files to read from
-def main(argv):
+def start(argv):
     # parse argv
     dir = argv[0]
 
@@ -76,5 +75,4 @@ def main(argv):
     # save merged q matrix
     save(matrix, dir)
 
-if __name__ == '__main__':
-    main(sys.argv[1:])
+start(sys.argv[1:])
