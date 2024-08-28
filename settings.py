@@ -5,6 +5,9 @@ from fallbacks import pygame
 
 # Game properties
 # board size (a smaller board may be useful at the beginning)
+
+# WARNING: current my_q_agent requires square board
+
 COLS = 17
 ROWS = 17
 
