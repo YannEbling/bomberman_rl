@@ -1,19 +1,26 @@
 import sys
+sys.path.append(".")
+
 import os
 import pickle
 import numpy as np
+from settings import *
+from callbacks import QWalkerModel
 
 def load(files, dir):
     matrices = []
+    model = ...
 
     for file_name in files:
         print(file_name)
 
         with open(f"./agent_code/{dir}/mp/data/{file_name}", "rb") as file:
-            matrices.append(pickle.load(file).Q)
+            model = pickle.load(file)
+            matrices.append(model.Q)
 
     print(f"loaded files: {len(matrices)}")
-    return matrices
+    print(f"loaded model: {model}")
+    return matrices, model
 
 def merge(matrices):
 
@@ -43,9 +50,8 @@ def merge(matrices):
     return target
 
 
-def save(matrix, dir):
+def save(matrix, dir, model):
     with open(f"./agent_code/{dir}/my-saved-model.pt", "wb") as file:
-        model = pickle.load(file)
         model.Q = matrix
         pickle.dump(model, file)
         file.close()
@@ -67,19 +73,18 @@ def list_files(directory):
         return []
 
 # argv[0] = number of files to read from
-def main(argv):
+def start():
     # parse argv
+    argv = sys.argv[1:]
     dir = argv[0]
 
     # load q matrices
-    matrices = load(list_files(f"./agent_code/{dir}/mp/data"), dir)
+    matrices, model = load(list_files(f"./agent_code/{dir}/mp/data"), dir)
 
     # merge q matrices
     matrix = merge(matrices)
 
     # save merged q matrix
-    save(matrix, dir)
+    save(matrix, dir, model)
 
-
-if __name__ == '__main__':
-    main(sys.argv[1:])
+start()
