@@ -53,7 +53,6 @@ def setup(self):
         self.logger.info("Loading model from saved state.")
         self.model = pickle.load(open("my-saved-model.pt", "rb"))
 
-
 def act(self, game_state: dict):
     return self.model.propose_action(game_state, self.train, self.logger)
 

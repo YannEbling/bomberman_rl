@@ -2,6 +2,7 @@ import pickle
 import events as e
 from typing import List
 import csv
+import os
 
 import auxiliary_functions as aux
 import settings as s
@@ -17,12 +18,15 @@ NEG_DIST_MULTIPLIER = 1
 
 # Rewards
 R_BASE = 0
-R_IDLE = 0
+R_IDLE = -0.01
 R_COIN = 1
-R_INVALID = 0
+R_INVALID = -0.02
 
 # custom Reward multiplier
 R_DIST = 0.1
+
+# id for matrix merging
+id = os.getpid()
 
 
 # Event rewards
@@ -56,7 +60,6 @@ PERMUTATIONS = {"none": [0, 1, 2, 3, 4],
                 }
 
 
-# STILL TO WORK OUT:
 def setup_training(self):
     """
     The training is set up, the statistics file is created empty, the rewards are initialized to 0.
@@ -93,6 +96,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         self.old_distance = self.new_distance
     for event in events:
         self.current_reward += EVENT_REWARDS[event]
+        if event == e.COIN_COLLECTED:
+            coin_index = None
     self.logger.info(f"Awarded {self.current_reward-distance_reward} for events {', '.join(events)}")
     self.total_reward += self.current_reward
     old_game_state_index, permutations = aux.state_to_index(old_game_state, coin_index=coin_index, dim_reduce=s.DIM_REDUCE)
@@ -139,7 +144,10 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
     self.total_reward = 0
 
-    self.saving_counter += 1
-    if self.saving_counter % SAVING_INTERVAL == 0:
-        with open("my-saved-model.pt", "wb") as file:
+    # Store the model
+    if os.path.isfile("./mp/mp.hky"):
+        with open(f"mp/data/my-saved-model{id}.pt", "wb") as file:
+            pickle.dump(self.model, file)
+    else:
+        with open("model-for-refining.pt", "wb") as file:
             pickle.dump(self.model, file)

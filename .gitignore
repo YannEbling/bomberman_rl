@@ -114,8 +114,4 @@ results/
 
 # files for testing
 howdidthiswork.py
-agent_code/WalkerQAgent/inspect_model.py
-agent_code/WalkerQAgent/training_statistic.py
-agent_code/WalkerQAgent/inspect_model.py
-agent_code/WalkerQAgent/Training_statistic1.jpg
-agent_code/WalkerQAgent/Training_statistic2.jpg
+agent_code/WalkerQAgent/ignore
