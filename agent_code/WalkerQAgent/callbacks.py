@@ -1,12 +1,13 @@
 import pickle
 import numpy as np
 import settings as s
+import random
 
 import auxiliary_functions as aux
 
 N = s.ROWS - 1
 NUM_TILES = (N - 1)*(N - 1) - (N // 2 - 1)*(N // 2 - 1)
-EPSILON = 0.15
+EPSILON = 0.25
 further_training_path = "model-for-refining.pt"
 
 ACTIONS = ['WAIT', 'UP', 'RIGHT', 'DOWN', 'LEFT']
@@ -53,8 +54,11 @@ def setup(self):
         self.logger.info("Loading model from saved state.")
         self.model = pickle.load(open("my-saved-model.pt", "rb"))
 
+
 def act(self, game_state: dict):
-    return self.model.propose_action(game_state, self.train, self.logger)
+    action = self.model.propose_action(game_state, self.train, self.logger)
+    s.MOST_RECENT_ACTION = action
+    return action
 
 
 class QWalkerModel:
@@ -71,17 +75,33 @@ class QWalkerModel:
         At the index corresponding to the game_state we are in, an action from the ACTIONS catalogue should be chosen
         according to the probabilities described by the values at the corresponding entries of the Q matrix.
         """
+
+        coin_index = aux.index_of_closest_item(game_state['self'][-1], game_state['coins'])
+        index, permutations = aux.state_to_index(game_state, coin_index=coin_index, dim_reduce=self.dim_reduce)
+
         # with an epsilon probability, return a randomly chosen action
+
         if train:
             num = np.random.random()
             if num < EPSILON:
-                random_index = np.random.randint(low=0, high=5)
-                return ACTIONS[random_index]
-        coin_index = aux.index_of_closest_coin(game_state['self'][-1], game_state['coins'])
-        index, permutations = aux.state_to_index(game_state, coin_index=coin_index, dim_reduce=self.dim_reduce)
+                action_index = np.random.randint(low=0, high=5)
+                logger.info(f"Chose action {ACTIONS[action_index]} purely at random.")
+                return ACTIONS[action_index]
         current_column = self.Q[:, index]
+        max_element = 0
+        index_to_chose = []
+        for k in range(len(current_column)):
+            if current_column[k] > max_element:
+                max_element = current_column[k]
+                index_to_chose = [k]
+            elif current_column[k] == max_element:
+                index_to_chose.append(k)
+        if len(index_to_chose):
+            action_index = random.choice(index_to_chose)
+        else:
+            action_index = random.randint(0, 4)
         logger.info(f"In step {game_state['step']} the Q matrix row is {current_column}.")
-        action_index = np.argmax(current_column)
+        # action_index = np.argmax(current_column)
         logger.info(f"The chosen action is {ACTIONS[action_index]}.")
         for k in range(len(permutations), 0, -1):
             action_index = PERMUTATIONS[permutations[k-1]][action_index]
@@ -112,8 +132,8 @@ class QWalkerModel:
         # raise ValueError("No proper action found. The summed probabilities of actions might not be normalized.")
 
         '''
-        action_index = np.argmax(current_column)
-        for k in range(len(permutations), 0, -1):
-            action_index = PERMUTATIONS[permutations[k-1]][action_index]
+        #action_index = np.argmax(current_column)
+        #for k in range(len(permutations), 0, -1):
+        #    action_index = PERMUTATIONS[permutations[k-1]][action_index]
         return ACTIONS[action_index]
 

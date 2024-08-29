@@ -114,4 +114,5 @@ results/
 
 # files for testing
 howdidthiswork.py
+auxiliary_function_tests.py
 agent_code/WalkerQAgent/ignore

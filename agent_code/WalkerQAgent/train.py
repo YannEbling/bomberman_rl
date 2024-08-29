@@ -11,8 +11,8 @@ SAVING_INTERVAL = 10000
 
 # Hyperparameters
 ALPHA = 0.4
-GAMMA = 0.2
-EPSILON = 0.15
+GAMMA = 0
+EPSILON = 0.25
 N_EVALSTEPS = 10
 NEG_DIST_MULTIPLIER = 1
 
@@ -80,29 +80,31 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     self.current_reward = 0
     distance_reward = 0
 
-    coin_index = aux.index_of_closest_coin(old_game_state['self'][-1], old_game_state['coins'])
+    coin_index = aux.index_of_closest_item(old_game_state['self'][-1], old_game_state['coins'])
 
-    if old_game_state["step"] == 2:
-        self.old_distance = aux.distance_from_coin(old_game_state["self"][-1], old_game_state["coins"][coin_index])
     # custom game event occurs every step. If this event is active, the current distance from the coin is
     # compared to the one from the last custom event. Getting closer is rewarded, straying away is penalized.
-    if old_game_state["step"] > 2:
-        self.new_distance = aux.distance_from_coin(old_game_state["self"][-1], old_game_state["coins"][coin_index])
+
+    coin_collect = False
+    for event in events:
+        self.current_reward += EVENT_REWARDS[event]
+        if event == e.COIN_COLLECTED:
+            coin_index = None
+            coin_collect = True
+    if not coin_collect:
+        self.old_distance = aux.distance_from_item(old_game_state["self"][-1], old_game_state["coins"][coin_index])
+        self.new_distance = aux.distance_from_item(new_game_state["self"][-1], new_game_state["coins"][coin_index])
         distance_reward = R_DIST * (self.old_distance - self.new_distance)
         if distance_reward < 0:
             distance_reward *= NEG_DIST_MULTIPLIER
         self.current_reward += distance_reward
         self.logger.info(f"Awarded {self.current_reward} for distance to coin.")
-        self.old_distance = self.new_distance
-    for event in events:
-        self.current_reward += EVENT_REWARDS[event]
-        if event == e.COIN_COLLECTED:
-            coin_index = None
     self.logger.info(f"Awarded {self.current_reward-distance_reward} for events {', '.join(events)}")
     self.total_reward += self.current_reward
     old_game_state_index, permutations = aux.state_to_index(old_game_state, coin_index=coin_index, dim_reduce=s.DIM_REDUCE)
     new_game_state_index, new_permutations = aux.state_to_index(new_game_state, coin_index=coin_index, dim_reduce=s.DIM_REDUCE)
     action_index = ACTION_INDICES[self_action]
+    self.logger.debug(f"Permutations are: {permutations}")
     for permutation in permutations:
         action_index = PERMUTATIONS[permutation][action_index]
     # Learning according to Q learning formula on https://en.wikipedia.org/wiki/Q-learning
@@ -116,14 +118,9 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
     self.current_reward = 0
 
-    coin_index = aux.index_of_closest_coin(last_game_state['self'][-1], last_game_state['coins'])
+    if len(last_game_state['coins']):
+        coin_index = aux.index_of_closest_item(last_game_state['self'][-1], last_game_state['coins'])
 
-    # custom game event occurs every N_EVALSTEPS steps. If this event is active, the current distance from the coin is
-    # compared to the one from the last custom event. Getting closer is rewarded, straying away is penalized.
-    if last_game_state["step"] % N_EVALSTEPS == 0 and len(last_game_state["coins"]) != 0:
-        self.new_distance = aux.distance_from_coin(last_game_state["self"][-1], last_game_state["coins"][coin_index])
-        self.current_reward += R_DIST * (self.old_distance - self.new_distance)
-        self.logger.info(f"Awarded {self.current_reward} for distance to coin")
     for event in events:
         self.current_reward += EVENT_REWARDS[event]
     self.logger.info(f"Awarded {self.current_reward} for events {', '.join(events)}")
@@ -151,3 +148,4 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     else:
         with open("model-for-refining.pt", "wb") as file:
             pickle.dump(self.model, file)
+
