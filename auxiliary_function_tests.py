@@ -20,21 +20,21 @@ GRID_AGENT = [[0,  0,  0,  0,  0,  0,  0,  0,  0],
               [0,  8,  0, 20,  0, 32,  0, 44,  0]]
 AGENT_TILES = 48
 GRID_COIN = [[0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
-             [0,  1,  2,  3,  6,  8, 13, 16, 23, 27, 36, 41, 52, 58, 71, 78,  0],
-             [0,  0,  0,  4,  0,  9,  0, 17,  0, 28,  0, 42,  0, 59,  0, 79,  0],
-             [0,  0,  0,  5,  7, 10, 14, 18, 24, 29, 37, 43, 53, 60, 72, 80,  0],
-             [0,  0,  0,  0,  0, 11,  0, 19,  0, 30,  0, 44,  0, 61,  0, 81,  0],
-             [0,  0,  0,  0,  0, 12, 15, 20, 25, 31, 38, 45, 54, 62, 73, 82,  0],
-             [0,  0,  0,  0,  0,  0,  0, 21,  0, 32,  0, 46,  0, 63,  0, 83,  0],
-             [0,  0,  0,  0,  0,  0,  0, 22, 26, 33, 39, 47, 55, 64, 74, 84,  0],
-             [0,  0,  0,  0,  0,  0,  0,  0,  0, 34,  0, 48,  0, 65,  0, 85,  0],
-             [0,  0,  0,  0,  0,  0,  0,  0,  0, 35, 40, 49, 56, 66, 75, 86,  0],
-             [0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 50,  0, 67,  0, 87,  0],
-             [0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 51, 57, 68, 76, 88,  0],
-             [0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 69,  0, 89,  0],
-             [0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 70, 77, 90,  0],
-             [0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 91,  0],
-             [0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 92,  0],
+             [0,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+             [0,  2,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+             [0,  3, 16, 23,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+             [0,  4,  0, 24,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+             [0,  5, 17, 25, 36, 42,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+             [0,  6,  0, 26,  0, 43,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+             [0,  7, 18, 27, 37, 44, 53, 58,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+             [0,  8,  0, 28,  0, 45,  0, 59,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+             [0,  9, 19, 29, 38, 46, 54, 60, 67, 71,  0,  0,  0,  0,  0,  0,  0],
+             [0, 10,  0, 30,  0, 47,  0, 61,  0, 72,  0,  0,  0,  0,  0,  0,  0],
+             [0, 11, 20, 31, 39, 48, 55, 62, 68, 73, 78, 81,  0,  0,  0,  0,  0],
+             [0, 12,  0, 32,  0, 49,  0, 63,  0, 74,  0, 82,  0,  0,  0,  0,  0],
+             [0, 13, 21, 33, 40, 50, 56, 64, 69, 75, 79, 83, 86, 88,  0,  0,  0],
+             [0, 14,  0, 34,  0, 51,  0, 65,  0, 76,  0, 84,  0, 89,  0,  0,  0],
+             [0, 15, 22, 35, 41, 52, 57, 66, 70, 77, 80, 85, 87, 90, 91, 92,  0],
              [0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0]]
 COIN_TILES = 92
 GRID_BOMB = [[0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
@@ -75,7 +75,7 @@ def horizontal_mirror(positions: list[tuple], n: int) -> list[tuple]:
     new_positions = []
     for i in range(len(positions)):
         position = positions[i]
-        new_position = (n - position[0], position[1])
+        new_position = (position[0], n - position[1])
         new_positions.append(new_position)
     return new_positions
 
@@ -84,7 +84,7 @@ def vertical_mirror(positions: list[tuple], n: int) -> list[tuple]:
     new_positions = []
     for i in range(len(positions)):
         position = positions[i]
-        new_position = (position[0], n - position[1])
+        new_position = (n - position[0], position[1])
         new_positions.append(new_position)
     return new_positions
 
@@ -99,7 +99,7 @@ def diagonal_mirror(positions: list[tuple], n: int) -> list[tuple]:
 
 
 def main():
-    errors_occured = False
+    errors_occurred = False
 
     for i in range(len(VALID_POSITIONS)):
         print("PROGRESS: ", i, " / ", len(VALID_POSITIONS), "(", round(i/len(VALID_POSITIONS)*100, 1), " %)")
@@ -109,18 +109,19 @@ def main():
                 coin_pos = VALID_POSITIONS[j]
                 bomb_pos = VALID_POSITIONS[k]
 
-                if agent_pos[0] > N//2:
-                    agent_pos, coin_pos, bomb_pos = horizontal_mirror([agent_pos, coin_pos, bomb_pos], N)
                 if agent_pos[1] > N//2:
+                    agent_pos, coin_pos, bomb_pos = horizontal_mirror([agent_pos, coin_pos, bomb_pos], N)
+                if agent_pos[0] > N//2:
                     agent_pos, coin_pos, bomb_pos = vertical_mirror([agent_pos, coin_pos, bomb_pos], N)
-                if coin_pos[0] > coin_pos[1]:
+                if coin_pos[0] < coin_pos[1]:
                     agent_pos, coin_pos, bomb_pos = diagonal_mirror([agent_pos, coin_pos, bomb_pos], N)
 
                 try:
                     # Here, the grids are indexed by the transposed of the positions: (y, x) = (i, j)
-                    a = GRID_BOMB[bomb_pos[1]][bomb_pos[0]] - 1
-                    b = GRID_COIN[coin_pos[1]][coin_pos[0]] - 1
-                    c = GRID_AGENT[agent_pos[1]][agent_pos[0]] - 1
+                    a = GRID_BOMB[bomb_pos[0]][bomb_pos[1]] - 1
+                    a = 0
+                    b = GRID_COIN[coin_pos[0]][coin_pos[1]] - 1
+                    c = GRID_AGENT[agent_pos[0]][agent_pos[1]] - 1
                 except IndexError:
                     print(f"There is an issue with the mirroring at {i, j, k}")
                     a = b = c = 0
@@ -137,9 +138,9 @@ def main():
                                                     coin_index=index,
                                                     bomb_index=index,
                                                     dim_reduce=DIM_REDUCE,
-                                                    include_bombs=True)
+                                                    include_bombs=False)[0]
 
-                errors_occurred = errors_occured and (computed_index == expected_index)
+                errors_occurred = errors_occurred or (computed_index != expected_index)
 
                 if computed_index != expected_index:
                     FAIL_POSITIONS.append([VALID_POSITIONS[i], VALID_POSITIONS[j], VALID_POSITIONS[k]])
