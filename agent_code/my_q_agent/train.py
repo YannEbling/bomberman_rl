@@ -3,6 +3,8 @@ from collections import namedtuple, deque
 import pickle
 from typing import List
 
+import math
+
 import events as e
 from .callbacks import state_to_features
 from .callbacks import find_closest_coin
@@ -55,6 +57,7 @@ action_to_index = {
 
 # For training debugging
 coins_collected = 0
+bombs_survived = 0
 round = 0
 
 id = os.getpid()
@@ -66,8 +69,10 @@ cells = pow((COLS - 2), 2)
 # Execution Time Analysis
 
 # Saving data every round is costly, save only every n rounds
-SAVE_INTERVAL = 100
+SAVE_INTERVAL = 1000
 save_counter = 0
+
+active_bombs = []
 
 def setup_training(self):
     """
@@ -113,6 +118,15 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     # Idea: Add your own events to hand out rewards
     #if ...:
         #events.append(PLACEHOLDER_EVENT)
+
+
+
+
+
+
+
+
+
 
     # state_to_features is defined in callbacks.py
     self.transitions.append(Transition(state_to_features(old_game_state), self_action, state_to_features(new_game_state), reward_from_events(self, events)))
@@ -250,8 +264,73 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     else:
         pass
         # todo: what if there is no bomb?
-        
-        
+
+
+    #
+    #   Custom Event: Survived a bomb -> SURVIVED_BOMB
+    #
+
+    # Add current bombs on the field, that are not already in the active bombs list, to the list
+    # But add only the position tupel, for simplification
+    for i in old_game_state["bombs"]:
+        if i[0] not in active_bombs:
+            active_bombs.append(i[0])
+
+    # Make a temporary list of the position tuples of all bombs currently on the field
+    tmp = []
+    for i in old_game_state["bombs"]:
+        tmp.append(i[0])
+
+    # Check for all active bombs, if they are not in the temporary list
+    # This can only be the case, when a bomb exploded
+    # If the agent is still alive at this point, give out reward
+    for i in active_bombs:
+        if i not in tmp:
+            print("survived a bomb!")
+            active_bombs.remove(i)
+            events.append(e.SURVIVED_BOMB)
+            global bombs_survived
+            bombs_survived = bombs_survived + 1
+
+    #
+    #   Custom event: Stepped away from bomb
+    #
+
+    if old_closest_bomb != None:
+        print(f"old_agent_pos: {old_agent_pos}")
+        print(f"new_agent_pos: {new_agent_pos}")
+
+        old_dist_to_bomb = math.sqrt(pow((old_closest_bomb[0][0] - old_agent_pos[0]), 2) + pow((old_closest_bomb[0][1] - old_agent_pos[1]), 2))
+        new_dist_to_bomb = math.sqrt(pow((old_closest_bomb[0][0] - new_agent_pos[0]), 2) + pow((old_closest_bomb[0][1] - new_agent_pos[1]), 2))
+
+        print(f"old_dist_to_bomb: {old_dist_to_bomb}")
+        print(f"new_dist_to_bomb: {new_dist_to_bomb}")
+
+        if new_dist_to_bomb > old_dist_to_bomb:
+            print("stepped away from bomb")
+            events.append(e.STEPPED_AWAY_FROM_BOMB)
+
+
+
+    #
+    #   Custom Event: Too close to bomb -> IN_DANGER
+    #
+
+    #if old_closest_bomb != None:
+
+    #    dist_to_bomb = math.sqrt(pow((old_closest_bomb[0][0] - old_agent_pos[0]), 2) + pow((old_closest_bomb[0][1] - old_agent_pos[1]), 2))
+
+    #    x_aligned = False
+    #    if old_closest_bomb[0][0] == old_agent_pos[0]:
+    #        x_aligned = True
+
+    #    y_aligned = False
+    #    if old_closest_bomb[0][1] == old_agent_pos[1]:
+    #        y_aligned = True
+#
+    #    if (x_aligned or y_aligned) and dist_to_bomb <= 3:
+    #        events.append(e.IN_DANGER)
+    #        print("IN DANGER")
         
     #
     #   Compute Pull Factor
@@ -330,7 +409,11 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     :param self: The same object that is passed to all of your callbacks.
     """
 
-    training_time = time.time()
+
+    #
+    #   Custom event survived bomb cleanup
+    #
+    active_bombs.clear()
 
 
     #
@@ -414,14 +497,19 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     new_value = factor1 + factor2 + factor3
     self.Q[last_state_index][last_action_index] = new_value
 
+    print(f"reward: {reward}")
 
     #   Debug - coin found?
     for event in events:
         if event == e.COIN_COLLECTED:
             global coins_collected 
             coins_collected = coins_collected + 1
+        if event == e.SURVIVED_BOMB:
+            global bombs_survived
+            bombs_survived = bombs_survived + 1
     
     print(f"Coins collected: {coins_collected}")
+    print(f"Bombs survived: {bombs_survived}")
 
 
     #for i in range(len(self.Q)):
@@ -434,20 +522,35 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
     self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
 
+
+    training_time = time.time()
+
+    #
     # Store the model
-    if os.path.isfile("./mp/mp.hky"):
-        with open(f"mp/data/my-saved-model{id}.pt", "wb") as file:
-            pickle.dump(self.Q, file)
-    else:
-        with open("my-saved-model.pt", "wb") as file:
-            pickle.dump(self.Q, file)
+    #
+    global save_counter
+    save_counter = save_counter + 1
+    print(f"save counter: {save_counter}")
+    if save_counter == SAVE_INTERVAL:
+        print("saving data")
+        if os.path.isfile("./mp/mp.hky"):
+            with open(f"mp/data/my-saved-model{id}.pt", "wb") as file:
+                pickle.dump(self.Q, file)
+                file.close()
+        else:
+            with open("my-saved-model.pt", "wb") as file:
+                pickle.dump(self.Q, file)
+                file.close()
+
+        save_counter = 0
+
 
     #
     #   Execution Time Analysis
     #
     exec_time = time.time() - training_time
-    print(f"Execution time for function \"game_events_occurred\": {exec_time:.6f} seconds")
-    self.logger.debug(f"Execution time for function \"game_events_occurred\": {exec_time} seconds")
+    print(f"Execution time for function \"end of round\": {exec_time:.6f} seconds")
+    self.logger.debug(f"Execution time for function \"end of round\": {exec_time} seconds")
  
 
 def training_end():
@@ -468,22 +571,27 @@ def reward_from_events(self, events: List[str]) -> int:
     
     
     game_rewards = {
-        e.COIN_COLLECTED: 15,
+        #e.COIN_COLLECTED: 15,
         #e.KILLED_OPPONENT: 5,
-        e.WAITED: -0.8,
-        e.INVALID_ACTION: -3.2,
-        e.MOVED_RIGHT: -0.2,
-        e.MOVED_UP: -0.2,
-        e.MOVED_DOWN: -0.2,
-        e.MOVED_LEFT: -0.2,
-        e.BOMB_DROPPED: 0.0,
-        e.CRATE_DESTROYED: 1.0,
-        e.KILLED_SELF: -100.0
+        #e.WAITED: -0.2,
+        #e.INVALID_ACTION: -3.2,
+        #e.MOVED_RIGHT: 0.2,
+        #e.MOVED_UP: 0.2,
+        #e.MOVED_DOWN: 0.2,
+        #e.MOVED_LEFT: 0.2,
+        #e.BOMB_DROPPED: 0.0,
+        #e.CRATE_DESTROYED: 10.0,
+        #e.IN_DANGER: -5,
+        #e.KILLED_SELF: -5.0,
+        e.STEPPED_AWAY_FROM_BOMB: 1.0,
+        e.SURVIVED_BOMB: 10.0
         #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
     }
     reward_sum = 0
     for event in events:
         if event in game_rewards:
+            if event == e.SURVIVED_BOMB:
+                print("bomb survied lol")
             reward_sum += game_rewards[event]
     self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
     return reward_sum

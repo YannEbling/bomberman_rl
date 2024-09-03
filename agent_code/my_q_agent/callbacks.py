@@ -88,7 +88,8 @@ def act(self, game_state: dict) -> str:
     #if self.train and random.random() < RANDOM_ACTION:
     if random.random() < RANDOM_ACTION:
         self.logger.debug("Choosing action purely at random.")
-        return np.random.choice(ACTIONS, p=[.225, .225, .225, .225, .0, .1])
+        #return np.random.choice(ACTIONS, p=[.225, .225, .225, .225, .0, .1])
+        return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .0, .2])
 
     self.logger.debug("Querying model for action.")
     
