@@ -2,12 +2,13 @@ import numpy
 
 import auxiliary_functions as aux
 import numpy as np
+import time
 
 DIM_REDUCE = True
 N = 16
 
-# In the following grid, i is corresponding to y and j to x. The index (i, j) therefore corresponds to the position
-# (y, x). In the conversion, the positions have to be transposed.
+# In the grids, the indexing has to be taken care of: GRID_AGENT[i][j] is corresponding to agent position (x,y), but in
+# the game, the x axis is horizontal and y axis is vertical. Here it is reversed.
 
 GRID_AGENT = [[0,  0,  0,  0,  0,  0,  0,  0,  0],
               [0,  1,  9, 13, 21, 25, 33, 37, 45],
@@ -52,7 +53,7 @@ GRID_BOMB = [[0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0]
              [0, 12,  0, 35,  0, 58,  0, 81,  0,104,  0,127,  0,150,  0,173,  0],
              [0, 13, 22, 36, 45, 59, 68, 82, 91,105,114,128,137,151,160,174,  0],
              [0, 14,  0, 37,  0, 60,  0, 83,  0,106,  0,129,  0,152,  0,175,  0],
-             [0, 15, 23, 38, 46, 61, 69, 84, 92,107,115,130,138,154,161,176,  0],
+             [0, 15, 23, 38, 46, 61, 69, 84, 92,107,115,130,138,153,161,176,  0],
              [0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0]]
 BOMB_TILES = 176
 
@@ -68,6 +69,7 @@ DOMAIN = np.arange(0, 17)
 VALID_POSITIONS = [(i, j) for i in DOMAIN for j in DOMAIN if condition(i, j, N)]
 
 FAIL_POSITIONS = []
+INDEX_COUNT = np.arange(1, BOMB_TILES*AGENT_TILES*COIN_TILES+1)
 ERRORS_OCCURRED = False
 
 
@@ -99,27 +101,31 @@ def diagonal_mirror(positions: list[tuple], n: int) -> list[tuple]:
 
 
 def main():
+    print("Start testing...")
     errors_occurred = False
 
     for i in range(len(VALID_POSITIONS)):
         print("PROGRESS: ", i, " / ", len(VALID_POSITIONS), "(", round(i/len(VALID_POSITIONS)*100, 1), " %)")
         for j in range(len(VALID_POSITIONS)):
             for k in range(len(VALID_POSITIONS)):
-                agent_pos = VALID_POSITIONS[i]
+                agent_pos = VALID_POSITIONS[k]
                 coin_pos = VALID_POSITIONS[j]
-                bomb_pos = VALID_POSITIONS[k]
+                bomb_pos = VALID_POSITIONS[i]
 
-                if agent_pos[1] > N//2:
-                    agent_pos, coin_pos, bomb_pos = horizontal_mirror([agent_pos, coin_pos, bomb_pos], N)
-                if agent_pos[0] > N//2:
-                    agent_pos, coin_pos, bomb_pos = vertical_mirror([agent_pos, coin_pos, bomb_pos], N)
-                if coin_pos[0] < coin_pos[1]:
-                    agent_pos, coin_pos, bomb_pos = diagonal_mirror([agent_pos, coin_pos, bomb_pos], N)
+                permuted = False
+                if DIM_REDUCE:
+                    if agent_pos[1] > N//2:
+                        agent_pos, coin_pos, bomb_pos = horizontal_mirror([agent_pos, coin_pos, bomb_pos], N)
+                        permuted = True
+                    if agent_pos[0] > N//2:
+                        agent_pos, coin_pos, bomb_pos = vertical_mirror([agent_pos, coin_pos, bomb_pos], N)
+                        permuted = True
+                    if coin_pos[0] < coin_pos[1]:
+                        agent_pos, coin_pos, bomb_pos = diagonal_mirror([agent_pos, coin_pos, bomb_pos], N)
+                        permuted = True
 
                 try:
-                    # Here, the grids are indexed by the transposed of the positions: (y, x) = (i, j)
                     a = GRID_BOMB[bomb_pos[0]][bomb_pos[1]] - 1
-                    a = 0
                     b = GRID_COIN[coin_pos[0]][coin_pos[1]] - 1
                     c = GRID_AGENT[agent_pos[0]][agent_pos[1]] - 1
                 except IndexError:
@@ -134,23 +140,50 @@ def main():
 
                 index = -1
 
-                computed_index = aux.state_to_index(game_state=game_state,
-                                                    coin_index=index,
-                                                    bomb_index=index,
-                                                    dim_reduce=DIM_REDUCE,
-                                                    include_bombs=False)[0]
+                computed_index, permutations = aux.state_to_index(game_state=game_state,
+                                                                  coin_index=index,
+                                                                  bomb_index=index,
+                                                                  dim_reduce=True,   # dim_reduce has already been applied
+                                                                  include_bombs=True)
 
                 errors_occurred = errors_occurred or (computed_index != expected_index)
 
+                global INDEX_COUNT
+                if INDEX_COUNT[computed_index] > 0 and not permuted:
+                    INDEX_COUNT[computed_index] = 0
+                elif not permuted:
+                    INDEX_COUNT[computed_index] -= 1
+                    FAIL_POSITIONS.append([VALID_POSITIONS[k], VALID_POSITIONS[j], VALID_POSITIONS[i]])
+
                 if computed_index != expected_index:
-                    FAIL_POSITIONS.append([VALID_POSITIONS[i], VALID_POSITIONS[j], VALID_POSITIONS[k]])
+                    FAIL_POSITIONS.append([VALID_POSITIONS[k], VALID_POSITIONS[j], VALID_POSITIONS[i]])
 
     if not errors_occurred:
         print("The function passed the position conversion test and acted as expected.")
     else:
-        print("The function failed the position conversion test at the following (agent, coin, bomb)- positions")
-        for fail_position in FAIL_POSITIONS:
-            print(fail_position)
+        print("The function failed the position conversion test.")
+
+    maximum = max(INDEX_COUNT)
+    if maximum > 0:
+        print("Compactness test failed. There is at least one index which is not used (non-compactness)."
+              " Largest index which isn't in use is",
+              maximum-1)
+    minimum = min(INDEX_COUNT)
+    if minimum < 0:
+        print("Uniqueness Test failed. There is at least one index which is ambiguous (used at least twice). Lowest "
+              "index which is most ambiguous:", np.argmin(INDEX_COUNT), "\n number of ambiguous indices: ",
+              len(FAIL_POSITIONS))
+
+    if not len(FAIL_POSITIONS) and not maximum:
+        print("The function passed the uniqueness and compactness test.")
+    else:
+        input_string = input("Print all failed position tuples? (y/n)")
+        if input_string == 'y':
+            print("All fail positions are:", FAIL_POSITIONS)
+        elif input_string != 'n':
+            print("Invalid input, program exit.")
+
+        print("Testing finished...")
 
 
 if __name__ == '__main__':
