@@ -57,6 +57,27 @@ GRID_BOMB = [[0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0]
              [0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0]]
 BOMB_TILES = 176
 
+# All possible action permutation outcomes, to test the revert_permutations function:
+
+PERMUTATION_RESULT = {"NO_PERM": ["LEFT", "RIGHT", "UP", "DOWN", "WAIT", "BOMB"],
+                      "V_PERM": ["RIGHT", "LEFT", "UP", "DOWN", "WAIT", "BOMB"],
+                      "H_PERM": ["LEFT", "RIGHT", "DOWN", "UP", "WAIT", "BOMB"],
+                      "D_PERM": ["UP", "DOWN", "LEFT", "RIGHT", "WAIT", "BOMB"],
+                      "VH_PERM": ["RIGHT", "LEFT", "DOWN", "UP", "WAIT", "BOMB"],
+                      "VD_PERM": ["DOWN", "UP", "LEFT", "RIGHT", "WAIT", "BOMB"],
+                      "HD_PERM": ["UP", "DOWN", "RIGHT", "LEFT", "WAIT", "BOMB"],
+                      "VHD_PERM": ["DOWN", "UP", "RIGHT", "LEFT", "WAIT", "BOMB"]}
+
+# A dictionary to conveniently access all possible permutation combinations during testing
+PERMUTATION_NAMES = {"NO_PERM": [],
+                     "V_PERM": ["vertical"],
+                     "H_PERM": ["horizontal"],
+                     "D_PERM": ["diagonal"],
+                     "VH_PERM": ["vertical", "horizontal"],
+                     "VD_PERM": ["vertical", "diagonal"],
+                     "HD_PERM": ["horizontal", "diagonal"],
+                     "VHD_PERM": ["vertical", "horizontal", "diagonal"]}
+
 
 def condition(i: int, j: int, n: int) -> bool:
     con1 = i % 2 != 0 or j % 2 != 0
@@ -181,9 +202,28 @@ def main():
         if input_string == 'y':
             print("All fail positions are:", FAIL_POSITIONS)
         elif input_string != 'n':
-            print("Invalid input, program exit.")
+            print("Invalid input, interpreted as 'n'.")
 
-        print("Testing finished...")
+    print("Start testing inverse permutation function.")
+    error_occurred = False
+    for perm in PERMUTATION_NAMES:
+        error_flag = False
+        initial_order = PERMUTATION_RESULT["NO_PERM"]
+        permutation_outcome = PERMUTATION_RESULT[perm]
+        permutations = PERMUTATION_NAMES[perm]
+        for i in range(len(permutation_outcome)):
+            action = permutation_outcome[i]
+            new_action = aux.revert_permutations(action, permutations)
+            if new_action != initial_order[i]:
+                error_flag = True
+        if error_flag:
+            print(f"The permutation {perm} has failed the permutation inversion test.")
+        error_occurred = error_occurred or error_flag
+
+    if not error_occurred:
+        print("The function has passed the permutation inversion test.")
+
+    print("Testing finished...")
 
 
 if __name__ == '__main__':

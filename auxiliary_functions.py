@@ -140,3 +140,16 @@ def distance_from_item(agent_position: tuple, item_position: tuple):
     item_x, item_y = item_position
     self_x, self_y = agent_position
     return abs(item_x - self_x) + abs(item_y - self_y)
+
+
+def revert_permutations(action, permutations):
+    vert_dict = {"LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "UP", "DOWN": "DOWN", "WAIT": "WAIT", "BOMB": "BOMB"}
+    horiz_dict = {"LEFT": "LEFT", "RIGHT": "RIGHT", "UP": "DOWN", "DOWN": "UP", "WAIT": "WAIT", "BOMB": "BOMB"}
+    diag_dict = {"LEFT": "UP", "RIGHT": "DOWN", "UP": "LEFT", "DOWN": "RIGHT", "WAIT": "WAIT", "BOMB": "BOMB"}
+    inverse_permutations = {"vertical": vert_dict, "horizontal": horiz_dict, "diagonal": diag_dict}
+    new_action = action
+    for k in range(len(permutations)):
+        old_action = new_action
+        permutation_to_invert = permutations[len(permutations) - (k+1)]
+        new_action = inverse_permutations[permutation_to_invert][old_action]
+    return new_action
