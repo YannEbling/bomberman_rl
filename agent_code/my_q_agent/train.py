@@ -15,6 +15,8 @@ import time
 from settings import *
 
 import os
+import auxiliary_functions as aux
+
 
 # This is only an example!
 Transition = namedtuple('Transition',
@@ -113,78 +115,60 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     """
     self.logger.debug(f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}')
 
-
-
-
-
-    #print(test)
-
-    # Idea: Add your own events to hand out rewards
-    #if ...:
-        #events.append(PLACEHOLDER_EVENT)
-
     # state_to_features is defined in callbacks.py
-    self.transitions.append(Transition(state_to_features(old_game_state), self_action, state_to_features(new_game_state), reward_from_events(self, events)))
+    self.transitions.append(Transition(state_to_features(old_game_state), self_action,
+                                       state_to_features(new_game_state), reward_from_events(self, events)))
     
     #---
-    
-    
-    #global parser
-    #print(parser)
-
     
     #
     #   Compute State Index of old_game_state
     #
-    # (1,1) <= agent_position <= (7,7) = 1 <= index <= 49
-    old_agent_pos   = old_game_state["self"][3]
-    old_agent_pos_x = old_agent_pos[0]
-    old_agent_pos_y = old_agent_pos[1]
-    old_agent_pos_index = (old_agent_pos_x - 1 + cols * (old_agent_pos_y - 1)) + 1
+    old_agent_pos = old_game_state["self"][3]
     
-    # Coin position
-    old_possible_closest_coin = find_closest_coin(old_game_state)
-    old_coin_pos_index = 1
-     
-    if old_possible_closest_coin != None:
-        old_coin_pos_index = (old_possible_closest_coin[0] - 1 + cols * (old_possible_closest_coin[1] - 1)) + 1
-    else:
-        pass
-        #print("Couldnt find a coin")
-        
-    # 0 <= state_index <= 2400
-    old_state_index = old_agent_pos_index * (cells - 1) + old_coin_pos_index - 1
-    
+    # Coin and bomb position
+    old_possible_closest_coin_index = aux.index_of_closest_item(old_agent_pos, old_game_state['coins'])
+    old_possible_closest_bomb_index = aux.index_of_closest_item(old_agent_pos, [old_game_state['bombs'][k][0] for k in
+                                                                                range(len(old_game_state['bombs']))])
 
+        
+    # 0 <= state_index < 790.128
+    old_state_index, permutations = aux.state_to_index(game_state=old_game_state,
+                                                       coin_index=old_possible_closest_coin_index,
+                                                       bomb_index=old_possible_closest_bomb_index,
+                                                       dim_reduce=True,
+                                                       include_bombs=True)
+    
+    permuted_old_action = aux.apply_permutations(self_action, permutations)
     
     #
     #   Compute Action Index of old_game_state
     #
-    old_action_index = action_to_index[self_action]
-    
-    
-    
-    
+    old_action_index = action_to_index[permuted_old_action]
+
+
+
+
     #
     #   Compute State Index of new_game_state
     #
-    # (1,1) <= agent_position <= (7,7) = 1 <= index <= 49
-    new_agent_pos   = new_game_state["self"][3]
-    new_agent_pos_x = new_agent_pos[0]
-    new_agent_pos_y = new_agent_pos[1]
-    new_agent_pos_index = (new_agent_pos_x - 1 + cols  * (new_agent_pos_y - 1)) + 1
+
+    new_agent_pos = new_game_state["self"][3]
     
-    # Coin position
-    new_possible_closest_coin = find_closest_coin(new_game_state)
-    new_coin_pos_index = 1
+    # Coin and bomb position
+    new_possible_closest_coin_index = aux.index_of_closest_item(new_agent_pos, new_game_state['coins'])
+    new_possible_closest_bomb_index = aux.index_of_closest_item(new_agent_pos, [new_game_state['bombs'][k][0] for k in
+                                                                                range(len(new_game_state['bombs']))])
     
-    if new_possible_closest_coin != None:
-        new_coin_pos_index = (new_possible_closest_coin[0] - 1 + cols * (new_possible_closest_coin[1] - 1)) + 1
-    else:
-        print("Couldnt find a coin")
+    if new_possible_closest_coin_index is None:
+        print("Couldn't find a coin")
     
-    # 0 <= state_index <= 2400
-    new_state_index = new_agent_pos_index * (cells - 1) + new_coin_pos_index - 1
+    # 0 <= state_index <= 790.128
+    new_state_index = aux.state_to_index(game_state=new_game_state,
+                                         coin_index=new_possible_closest_coin_index,
+                                         bomb_index=new_possible_closest_bomb_index,
+                                         dim_reduce=True,
+                                         include_bombs=True)[0]
     
 
     #
@@ -207,7 +191,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     self.logger.debug(f"factor3 :{factor3}")
     
     self.logger.debug(f"old q value before update: {self.Q[old_state_index][old_action_index]}")
-    new_value = factor1 + factor2 + factor3
+    new_value = factor1 + factor3
     self.logger.debug(f"new q value: {new_value}")
     self.logger.debug(f"reward: {reward}")
     
@@ -247,13 +231,11 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #
     # (1,1) <= agent_position <= (7,7) = 1 <= index <= 49
     last_agent_pos   = last_game_state["self"][3]
-    last_agent_pos_x = last_agent_pos[0]
-    last_agent_pos_y = last_agent_pos[1]
-    last_agent_pos_index = (last_agent_pos_x - 1 + cols * (last_agent_pos_y - 1)) + 1
-    
-    # Coin position
-    possible_closest_coin = find_closest_coin(last_game_state)
-    last_coin_pos_index = 1
+
+    # Coin and bomb position
+    possible_closest_coin_index = aux.index_of_closest_item(last_agent_pos, last_game_state['coins'])
+    possible_closest_bomb_index = aux.index_of_closest_item(last_agent_pos, [last_game_state['bombs'][k][0] for k in
+                                                                             range(len(last_game_state['bombs']))])
     
     #if len(last_game_state["coins"]) > 0:
     #    last_coin_pos   = last_game_state["coins"][0]
@@ -261,16 +243,19 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #    last_coin_pos_y = last_coin_pos[1]
     #    last_coin_pos_index = (last_coin_pos_x - 1 + cols * (last_coin_pos_y - 1)) + 1
     
-    if possible_closest_coin != None:
-        last_coin_pos_index = (possible_closest_coin[0] - 1 + cols * (possible_closest_coin[1] - 1)) + 1
-    else:
-        print("Couldnt find a coin")
+    if possible_closest_coin_index is None:
+        print("Couldn't find a coin")
     
     
-    # 0 <= state_index <= 2400
-    last_state_index = last_agent_pos_index * (cells - 1) + last_coin_pos_index - 1
- 
-    last_action_index = action_to_index[last_action]
+    # 0 <= state_index < 790.128
+    last_state_index, permutations = aux.state_to_index(game_state=last_game_state,
+                                                        coin_index=possible_closest_coin_index,
+                                                        bomb_index=possible_closest_bomb_index,
+                                                        dim_reduce=True,
+                                                        include_bombs=True)
+
+    permuted_last_action = aux.apply_permutations(last_action, permutations)
+    last_action_index = action_to_index[permuted_last_action]
 
     #
     #   Update Q-value of state-action tupel
@@ -281,7 +266,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     factor1 = ( 1.0 - ALPHA ) * self.Q[last_state_index][ last_action_index]
     factor2 = GAMMA * self.Q[last_state_index][argmax]
     factor3 = ALPHA * ( reward + factor2 )
-    new_value = factor1 + factor2 + factor3
+    new_value = factor1 + factor3
 
     self.Q[last_state_index][last_action_index] = new_value
     #
@@ -299,7 +284,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
             global coins_collected 
             coins_collected = coins_collected + 1
     
-    print(f"Coins collected: {coins_collected}")
+    #print(f"Coins collected: {coins_collected}")
 
 
     #for i in range(len(self.Q)):

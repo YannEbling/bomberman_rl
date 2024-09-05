@@ -87,10 +87,10 @@ def condition(i: int, j: int, n: int) -> bool:
 
 
 DOMAIN = np.arange(0, 17)
-VALID_POSITIONS = [(i, j) for i in DOMAIN for j in DOMAIN if condition(i, j, N)]
+VALID_POSITIONS = [(i, j) for i in DOMAIN for j in DOMAIN if condition(i, j, N)] + [(0, 0)]
 
 FAIL_POSITIONS = []
-INDEX_COUNT = np.arange(1, BOMB_TILES*AGENT_TILES*COIN_TILES+1)
+INDEX_COUNT = np.arange(1, (BOMB_TILES+1)*AGENT_TILES*(COIN_TILES+1) + 1)
 ERRORS_OCCURRED = False
 
 
@@ -98,8 +98,11 @@ def horizontal_mirror(positions: list[tuple], n: int) -> list[tuple]:
     new_positions = []
     for i in range(len(positions)):
         position = positions[i]
-        new_position = (position[0], n - position[1])
-        new_positions.append(new_position)
+        if position != (0, 0):
+            new_position = (position[0], n - position[1])
+            new_positions.append(new_position)
+        else:
+            new_positions.append(position)
     return new_positions
 
 
@@ -107,8 +110,11 @@ def vertical_mirror(positions: list[tuple], n: int) -> list[tuple]:
     new_positions = []
     for i in range(len(positions)):
         position = positions[i]
-        new_position = (n - position[0], position[1])
-        new_positions.append(new_position)
+        if position != (0, 0):
+            new_position = (n - position[0], position[1])
+            new_positions.append(new_position)
+        else:
+            new_positions.append(position)
     return new_positions
 
 
@@ -127,11 +133,13 @@ def main():
 
     for i in range(len(VALID_POSITIONS)):
         print("PROGRESS: ", i, " / ", len(VALID_POSITIONS), "(", round(i/len(VALID_POSITIONS)*100, 1), " %)")
+        if VALID_POSITIONS[i] == (0, 0):  # no a valid position for the agent, only for coin and bomb
+            continue
         for j in range(len(VALID_POSITIONS)):
             for k in range(len(VALID_POSITIONS)):
-                agent_pos = VALID_POSITIONS[k]
+                agent_pos = VALID_POSITIONS[i]
                 coin_pos = VALID_POSITIONS[j]
-                bomb_pos = VALID_POSITIONS[i]
+                bomb_pos = VALID_POSITIONS[k]
 
                 permuted = False
                 if DIM_REDUCE:
@@ -146,13 +154,13 @@ def main():
                         permuted = True
 
                 try:
-                    a = GRID_BOMB[bomb_pos[0]][bomb_pos[1]] - 1
-                    b = GRID_COIN[coin_pos[0]][coin_pos[1]] - 1
+                    a = GRID_BOMB[bomb_pos[0]][bomb_pos[1]]
+                    b = GRID_COIN[coin_pos[0]][coin_pos[1]]
                     c = GRID_AGENT[agent_pos[0]][agent_pos[1]] - 1
                 except IndexError:
                     print(f"There is an issue with the mirroring at {i, j, k}")
                     a = b = c = 0
-                expected_index = a * COIN_TILES*AGENT_TILES + b * AGENT_TILES + c
+                expected_index = a * (COIN_TILES+1)*AGENT_TILES + b * AGENT_TILES + c
 
                 game_state = {'self': [agent_pos],
                               'coins': [coin_pos],
@@ -164,20 +172,25 @@ def main():
                 computed_index, permutations = aux.state_to_index(game_state=game_state,
                                                                   coin_index=index,
                                                                   bomb_index=index,
-                                                                  dim_reduce=True,   # dim_reduce has already been applied
+                                                                  dim_reduce=True,  # dim_reduce has already been applied
                                                                   include_bombs=True)
 
                 errors_occurred = errors_occurred or (computed_index != expected_index)
 
-                global INDEX_COUNT
-                if INDEX_COUNT[computed_index] > 0 and not permuted:
-                    INDEX_COUNT[computed_index] = 0
-                elif not permuted:
-                    INDEX_COUNT[computed_index] -= 1
-                    FAIL_POSITIONS.append([VALID_POSITIONS[k], VALID_POSITIONS[j], VALID_POSITIONS[i]])
+                try:
+                    global INDEX_COUNT
+                    if INDEX_COUNT[computed_index] > 0 and not permuted:
+                        INDEX_COUNT[computed_index] = 0
+                    elif not permuted:
+                        INDEX_COUNT[computed_index] -= 1
+                        FAIL_POSITIONS.append([VALID_POSITIONS[i], VALID_POSITIONS[j], VALID_POSITIONS[k]])
 
-                if computed_index != expected_index:
-                    FAIL_POSITIONS.append([VALID_POSITIONS[k], VALID_POSITIONS[j], VALID_POSITIONS[i]])
+                    if computed_index != expected_index:
+                        FAIL_POSITIONS.append([VALID_POSITIONS[i], VALID_POSITIONS[j], VALID_POSITIONS[k]])
+                except IndexError:
+                    print(f"Something went wrong, index {computed_index} exceeds length of array {len(INDEX_COUNT)}.\n"
+                          f"Positions: {VALID_POSITIONS[i], VALID_POSITIONS[j], VALID_POSITIONS[k]}\n"
+                          f"A-B-C: {a, b, c}. Error flag was raised: {computed_index!=expected_index}")
 
     if not errors_occurred:
         print("The function passed the position conversion test and acted as expected.")

@@ -8,12 +8,15 @@ import numpy as np
 
 from settings import *
 from main import *
+import auxiliary_functions as aux
 
 #ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
 
 cols = (COLS - 2)
 cells = pow((COLS - 2), 2)
+n = COLS - 1
+assert COLS == ROWS
 
 RANDOM_ACTION = .15
 
@@ -43,27 +46,49 @@ def setup(self):
     if self.train and os.path.isfile("my-saved-model.pt"):
         print("Continue training model from saved state.")
         with open("my-saved-model.pt", "rb") as file:
-            self.Q = pickle.load(file)        
+            self.Q = pickle.load(file)
+            print("TYPE OF LOADED MODEL: ", type(self.Q))
+
     elif self.train or not os.path.isfile("my-saved-model.pt"):
     #if self.train or not os.path.isfile("my-saved-model.pt"):
         self.logger.info("Setting up model from scratch.")
         print("Setting up model from scratch.")
-        weights = np.random.rand(len(ACTIONS))
-        self.model = weights / weights.sum()
+        #weights = np.random.rand(len(ACTIONS))
+        #self.model = weights / weights.sum()
         
         # ---
         
         # for one coin scenario only 
-        nr_states = pow(cells, 2)
-        self.Q = [[random.uniform(0.0, 1.0) for _ in range(5)] for _ in range(nr_states)]
+        #nr_states = pow(cells, 2)
+        #self.Q = [[random.uniform(0.0, 1.0) for _ in range(5)] for _ in range(nr_states)]
         
         # ---
+
+        # Setting up the model using the dimension reduction
+
+        # First, compute the total number of disjoint states (after applying dimension reduction)
+
+        number_of_agent_states = int(3 * n ** 2 / 16)  # for the agent, only a part of the tiles are valid positions
+        number_of_coin_states = 1
+        for k in range(1, n):
+            if k % 2 == 0:
+                number_of_coin_states += k // 2
+            else:
+                number_of_coin_states += k
+
+        number_of_bomb_states = int((n - 1) ** 2 - (n / 2 - 1) ** 2) + 1  # this is the total number of valid positions
+        # on the board plus one for the case of no bomb on the board
+        nr_states = number_of_agent_states * number_of_bomb_states * number_of_coin_states
+        shape = (nr_states, len(ACTIONS))
+        self.logger.debug("New model has dimensions ", shape)
+        self.Q = np.random.random(shape)
         
     else:
         self.logger.info("Loading model from saved state.")
         print("Loading model from saved state.")
         with open("my-saved-model.pt", "rb") as file:
             self.Q = pickle.load(file)
+            print("TYPE OF LOADED MODEL: ", type(self.Q))
 
 
 def act(self, game_state: dict) -> str:
@@ -101,15 +126,18 @@ def act(self, game_state: dict) -> str:
     #---
     # Get Q vector for current player position and coin position 
     # 'self': (str, int, bool, (int, int))
-    
-    
+
+
     agent_pos = game_state["self"][3]
-    agent_pos_x = agent_pos[0]
-    agent_pos_y = agent_pos[1]
-    agent_pos_index = (agent_pos_x - 1 + cols * (agent_pos_y - 1)) + 1
-    
-    possible_closest_coin = find_closest_coin(game_state)
-    coin_pos_index = 1
+    coin_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=game_state['coins'])
+    bomb_positions = [bomb_attributes[0] for bomb_attributes in game_state['bombs']]
+    bomb_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=bomb_positions)
+    index, permutations = aux.state_to_index(game_state, coin_index=coin_index, bomb_index=bomb_index,
+                                             dim_reduce=True, include_bombs=True)
+    action_index = np.argmax(self.Q[index])
+    permuted_action = ACTIONS[action_index]
+    action_chosen = aux.revert_permutations(permuted_action, permutations)
+
     
     #if len(game_state["coins"]) > 0:
     #    coin_pos = game_state["coins"][0]
@@ -117,22 +145,18 @@ def act(self, game_state: dict) -> str:
     #    coin_pos_y = coin_pos[1]
     #    coin_pos_index = (coin_pos_x - 1 + cols * (coin_pos_y - 1)) + 1
     
-    if possible_closest_coin != None:
-        coin_pos = possible_closest_coin
-        coin_pos_x = coin_pos[0]
-        coin_pos_y = coin_pos[1]
-        coin_pos_index = (coin_pos_x - 1 + cols * (coin_pos_y - 1)) + 1
-    else:
-        print("Couldnt find a coin")
+    if coin_index is None:
+        print("Couldn't find a coin")
     
     # 0 <= final_index <= 2400
-    final_index = agent_pos_index * (cells - 1) + coin_pos_index - 1
-    actions = self.Q[final_index]
-    final_decision = np.argmax(actions)
-    action_chosen = ACTIONS[final_decision]
-    
-    self.logger.debug(f"Action choosen: {action_chosen}")
-    self.logger.debug(f"Q[{final_index}]: {actions}")
+    #final_index = agent_pos_index * (cells - 1) + coin_pos_index - 1
+    actions = self.Q[action_index]
+    #final_decision = np.argmax(actions)
+    #action_chosen = ACTIONS[final_decision]
+
+    self.logger.debug(f"Q[{index}]: {actions}")
+    self.logger.debug(f"Argmax-action of row is {permuted_action}")
+    self.logger.debug(f"Action chosen after reverting permutations {permutations}: {action_chosen}")
    
     #---
     return action_chosen

@@ -9,6 +9,8 @@ def convert_pos(position_tuple: tuple, n, is_a_coin=False):
     """
 
     x, y = position_tuple
+    if x == y == 0:  # This case shouldn't occur in the real game, because (0,0) is a wall. However, we can use this,
+        return 0     # to mark the absence of any bomb or coin. It will be treated as a bomb/coin being placed at (0,0) and should have index 0.
     conv_pos = 0
     subtractor = 0
     conv_pos += ((y-1)//2) * (n//2) + ((y-1) - (y-1)//2) * (n-1)
@@ -36,7 +38,8 @@ def index_of_closest_item(agent_position: tuple, item_positions: List[tuple]):
             i_min = i
             d_min = d
     if i_min < 0:
-        raise ValueError("No coin can be found close to the agent.")
+        return None
+        #raise ValueError("No coin can be found close to the agent.")
     return i_min
 
 
@@ -58,6 +61,10 @@ def state_to_index(game_state: dict, coin_index=None, bomb_index=None, dim_reduc
         coin_position = game_state["coins"][coin_index]  # use the coins position
     else:
         coin_position = (0, 0)  # there are no coins and the game should end (in single player round)
+        # remark: similar to the bomb situation, the position (0,0) of a coin can be regarded as the case, where there
+        # is no coin left on the board. In this case, the game could still go on (other agents might still be alive),
+        # but the training should ignore the coin. The state needs to be numbered though, for which we need this extra
+        # position, corresponding to the digit 0 in the index of the state.
 
     if include_bombs:
         if len(game_state['bombs']):
@@ -67,50 +74,55 @@ def state_to_index(game_state: dict, coin_index=None, bomb_index=None, dim_reduc
 
             bomb_position = game_state['bombs'][bomb_index][0]
         else:
-            bomb_position = (0, 0)
+            bomb_position = (0, 0)  # same as above. No bomb -> bomb_position = (0,0) corresponds to index 0.
 
     permutations = []
     if dim_reduce:  # reduce the dimension of the Q matrix by exploiting mirror symmetry
         if agent_position[0] > n//2:
             agent_position_0 = n//2 - (agent_position[0] - (n//2))
             agent_position = (agent_position_0, agent_position[1])
-            coin_position_0 = n//2 - (coin_position[0] - (n//2))
-            coin_position = (coin_position_0, coin_position[1])
-            if include_bombs:
+            if coin_position != (0, 0):
+                coin_position_0 = n//2 - (coin_position[0] - (n//2))
+                coin_position = (coin_position_0, coin_position[1])
+            if include_bombs and bomb_position != (0, 0):
                 bomb_position_0 = n//2 - (bomb_position[0] - (n//2))
                 bomb_position = (bomb_position_0, bomb_position[1])
             permutations.append("vertical")
         if agent_position[1] > n//2:
             agent_position_1 = n//2 - (agent_position[1] - (n//2))
             agent_position = (agent_position[0], agent_position_1)
-            coin_position_1 = n//2 - (coin_position[1] - (n//2))
-            coin_position = (coin_position[0], coin_position_1)
-            if include_bombs:
+            if coin_position != (0,0):
+                coin_position_1 = n//2 - (coin_position[1] - (n//2))
+                coin_position = (coin_position[0], coin_position_1)
+            if include_bombs and bomb_position != (0,0):
                 bomb_position_1 = n//2 - (bomb_position[1] - (n//2))
                 bomb_position = (bomb_position[0], bomb_position_1)
             permutations.append("horizontal")
         if coin_position[1] > coin_position[0]:
-            coin_position = (coin_position[1], coin_position[0])
+            if coin_position != (0, 0):
+                coin_position = (coin_position[1], coin_position[0])
             agent_position = (agent_position[1], agent_position[0])
-            if include_bombs:
+            if include_bombs and bomb_position != (0, 0):
                 bomb_position = (bomb_position[1], bomb_position[0])
             permutations.append("diagonal")
 
         number_of_agent_tiles = int(3*n**2/16)  # for the agent, only a part of the tiles are valid
-        first_digit = convert_pos(coin_position, n, is_a_coin=True) - 1
-        second_digit = convert_pos(agent_position, n//2+1) - 1
+        first_digit = convert_pos(coin_position, n, is_a_coin=True)  # no minus 1 here. The states are numbered 1 to
+        # number_of_coin_tiles, and 0 is the state with no coin on the board.
+        second_digit = convert_pos(agent_position, n//2+1) - 1  # There has to be the agent on the board, so the - 1 is
+        # needed here. The numbering is from 0 to (number_of_agent_tiles-1)
 
         index = first_digit * number_of_agent_tiles + second_digit
 
         if include_bombs:
-            number_of_coin_tiles = 0
+            number_of_coin_tiles = 1  # This one tile here is the tile (0,0), the state with no coin on the board
             for k in range(1, n):
                 if k % 2 == 0:
                     number_of_coin_tiles += k // 2
                 else:
                     number_of_coin_tiles += k
 
-            third_digit = convert_pos(bomb_position, n) - 1
+            third_digit = convert_pos(bomb_position, n)  # also here no minus one, because of the (0,0) position.
             number_of_agent_coin_states = number_of_coin_tiles*number_of_agent_tiles
 
             index += third_digit * number_of_agent_coin_states
@@ -119,19 +131,23 @@ def state_to_index(game_state: dict, coin_index=None, bomb_index=None, dim_reduc
 
     # This is only reached, if there is no dimension reduction.
     number_of_tiles = int(3/4 * n**2 - n)  # total number of tiles on the board
-    first_digit = convert_pos(coin_position, n) - 1  # number of the tile where the agent is located
+    first_digit = convert_pos(coin_position, n)  # number of the tile where the agent is located
     second_digit = convert_pos(agent_position, n) - 1  # number of the tile where the coin is located
 
     index = first_digit * number_of_tiles + second_digit  # a unique integer, representing the state
     if include_bombs:
-        if bomb_index is None: # if no bomb index is handed, find the index of the closest bomb
-            bomb_index = index_of_closest_item(agent_position,
-                                               [game_state['bombs'][k][0] for k in range(len(game_state['bombs']))])
+        if len(game_state['bombs']):
+            if bomb_index is None:  # if no bomb index is handed, find the index of the closest bomb
+                bomb_index = index_of_closest_item(agent_position,
+                                                   [game_state['bombs'][k][0] for k in range(len(game_state['bombs']))])
 
-        bomb_position = game_state['bombs'][bomb_index][0]
-        third_digit = convert_pos(bomb_position, n) - 1  # number of the tile, where the bomb is located
+            bomb_position = game_state['bombs'][bomb_index][0]
+        else:
+            bomb_position = (0, 0)  # if there is no bomb (len(game_state[bombs])) == 0(False), position is set to (0,0)
+        third_digit = convert_pos(bomb_position, n)  # number of the tile, where the bomb is located
 
-        index += third_digit * number_of_tiles**2
+        index += third_digit * number_of_tiles*(number_of_tiles+1)  # #number_of_tiles states for the agent and #number_
+        # _of_tiles + 1 for the coin
 
     return index, permutations
 
@@ -143,6 +159,11 @@ def distance_from_item(agent_position: tuple, item_position: tuple):
 
 
 def revert_permutations(action, permutations):
+    """
+    This function undoes the effect, that permutations have. Since all permutations are self_inverse, D*D = id,
+    H*H = id, V*V = id, all we have to do is to apply the permutations in reversed order. The effect of each permutation
+    is stored in the corresponding dictionary below.
+    """
     vert_dict = {"LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "UP", "DOWN": "DOWN", "WAIT": "WAIT", "BOMB": "BOMB"}
     horiz_dict = {"LEFT": "LEFT", "RIGHT": "RIGHT", "UP": "DOWN", "DOWN": "UP", "WAIT": "WAIT", "BOMB": "BOMB"}
     diag_dict = {"LEFT": "UP", "RIGHT": "DOWN", "UP": "LEFT", "DOWN": "RIGHT", "WAIT": "WAIT", "BOMB": "BOMB"}
@@ -153,3 +174,13 @@ def revert_permutations(action, permutations):
         permutation_to_invert = permutations[len(permutations) - (k+1)]
         new_action = inverse_permutations[permutation_to_invert][old_action]
     return new_action
+
+
+def apply_permutations(action, permutations):
+    """
+    This function is somewhat the opposite of the revert_permutations function. It applies all permutations. Since
+    revert_permutations does nothing other than applying the permutations in the reversed order, we can call it with a
+    reversed input, to simply apply the permutations.
+    """
+    reversed_permutations = [permutations[len(permutations)-i-1] for i in range(len(permutations))]
+    return revert_permutations(action, reversed_permutations)
