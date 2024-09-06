@@ -251,7 +251,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     new_closest_crate = find_closest_crate(new_game_state)
     new_crate_pos_index = 1  # this could be an issue
     if new_closest_crate != None:
-        new_crate_pos_index = (new_closest_crate[0] - 1 + cols * (new_closest_crate[0] - 1)) + 1
+        new_crate_pos_index = (new_closest_crate[0] - 1 + cols * (new_closest_crate[1] - 1)) + 1
 
 
     #
