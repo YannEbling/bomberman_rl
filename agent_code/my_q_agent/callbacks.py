@@ -99,7 +99,7 @@ def act(self, game_state: dict) -> str:
     # Get Q vector for current player position and coin position 
     # 'self': (str, int, bool, (int, int))
     agent_pos = game_state["self"][3]
-    agent_pos_index = (agent_pos[0] - 1 + cols * (agent_pos[0] - 1)) + 1
+    agent_pos_index = (agent_pos[0] - 1 + cols * (agent_pos[1] - 1)) + 1
 
     
     #
@@ -117,7 +117,7 @@ def act(self, game_state: dict) -> str:
     closest_crate = find_closest_crate(game_state)
     crate_pos_index = 1  # this could be an issue
     if closest_crate != None:
-        crate_pos_index = (closest_crate[0] - 1 + cols * (closest_crate[0] - 1)) + 1
+        crate_pos_index = (closest_crate[0] - 1 + cols * (closest_crate[1] - 1)) + 1
 
 
     #

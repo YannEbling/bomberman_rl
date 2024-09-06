@@ -382,7 +382,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #self.logger.debug(f"factor3 :{factor3}")
     #self.logger.debug(f"old q value before update: {self.Q[old_state_index][old_action_index]}")
     
-    new_value = factor1 + factor2 + factor3
+    new_value = factor1 + factor3
     #self.logger.debug(f"new q value: {new_value}")
     #self.logger.debug(f"reward: {reward}")
     
