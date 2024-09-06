@@ -145,8 +145,8 @@ def act(self, game_state: dict) -> str:
     #    coin_pos_y = coin_pos[1]
     #    coin_pos_index = (coin_pos_x - 1 + cols * (coin_pos_y - 1)) + 1
     
-    if coin_index is None:
-        print("Couldn't find a coin")
+    #if coin_index is None:
+    #    print("Couldn't find a coin")
     
     # 0 <= final_index <= 2400
     #final_index = agent_pos_index * (cells - 1) + coin_pos_index - 1

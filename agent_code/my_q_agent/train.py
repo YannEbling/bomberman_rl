@@ -160,8 +160,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     new_possible_closest_bomb_index = aux.index_of_closest_item(new_agent_pos, [new_game_state['bombs'][k][0] for k in
                                                                                 range(len(new_game_state['bombs']))])
     
-    if new_possible_closest_coin_index is None:
-        print("Couldn't find a coin")
+    #if new_possible_closest_coin_index is None:
+        #print("Couldn't find a coin")
     
     # 0 <= state_index <= 790.128
     new_state_index = aux.state_to_index(game_state=new_game_state,
@@ -243,8 +243,8 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #    last_coin_pos_y = last_coin_pos[1]
     #    last_coin_pos_index = (last_coin_pos_x - 1 + cols * (last_coin_pos_y - 1)) + 1
     
-    if possible_closest_coin_index is None:
-        print("Couldn't find a coin")
+    #if possible_closest_coin_index is None:
+        #print("Couldn't find a coin")
     
     
     # 0 <= state_index < 790.128
