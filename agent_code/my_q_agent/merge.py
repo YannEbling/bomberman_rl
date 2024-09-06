@@ -1,6 +1,7 @@
 import sys
 import os
 import pickle
+import numpy as np
 
 def load(files, dir):
     matrices = []
@@ -15,7 +16,6 @@ def load(files, dir):
     return matrices
 
 def merge(matrices):
-    target = []
 
     mats = len(matrices)
     cols = len(matrices[0])
@@ -25,21 +25,17 @@ def merge(matrices):
     print(f"cols {cols}")
     print(f"rows {rows}")
 
-    for i in range(cols):
-        target.append([])
-        for j in range(rows):
-            sum = 0.0
-            for k in range(mats):
-                sum += matrices[k][i][j]
-            target[i].append(sum / mats)
+    sum = np.zeros((cols, rows))
+    for i in range(mats):
+        sum += matrices[i]
+    mean_matrix = sum / mats
 
     print(type(matrices))
     print(type(matrices[0]))
     print(type(matrices[0][0]))
     print(type(matrices[0][0][0]))
-
-    #print(target)
-    return target
+    
+    return mean_matrix
 
 
 def save(matrix, dir):

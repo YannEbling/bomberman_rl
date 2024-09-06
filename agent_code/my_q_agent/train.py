@@ -18,6 +18,19 @@ import os
 import auxiliary_functions as aux
 
 
+# -----------------------------------------------------------
+#      !!! IMPORTANT !!!
+# -----------------------------------------------------------
+# Saving data every round is costly, save only every n rounds
+# SAVE_INTERVAL must match the value for the parameter --n-rounds
+# (Would read this out of args but it somehow doesnt work) 
+#
+SAVE_INTERVAL = 10
+save_counter = 0
+
+
+
+
 # This is only an example!
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
@@ -300,13 +313,24 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
     self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
 
+    #
     # Store the model
-    if os.path.isfile("./mp/mp.hky"):
-        with open(f"mp/data/my-saved-model{id}.pt", "wb") as file:
-            pickle.dump(self.Q, file)
-    else:
-        with open("my-saved-model.pt", "wb") as file:
-            pickle.dump(self.Q, file)
+    #
+    global save_counter
+    save_counter = save_counter + 1
+    print(f"save counter: {save_counter}")
+    if save_counter == SAVE_INTERVAL:
+        print("saving data")
+        if os.path.isfile("./mp/mp.hky"):
+            with open(f"mp/data/my-saved-model{id}.pt", "wb") as file:
+                pickle.dump(self.Q, file)
+                file.close()
+        else:
+            with open("my-saved-model.pt", "wb") as file:
+                pickle.dump(self.Q, file)
+                file.close()
+
+        save_counter = 0
 
     #
     #   Execution Time Analysis
