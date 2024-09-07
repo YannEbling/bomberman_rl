@@ -10,6 +10,16 @@ from .callbacks import state_to_features
 from .callbacks import find_closest_coin
 from .callbacks import find_closest_bomb
 from .callbacks import find_closest_crate
+from .callbacks import compute_state_index
+from .callbacks import compute_agent_pos_index
+from .callbacks import compute_pull_factor_index
+from .callbacks import compute_indices
+from .callbacks import can_escape_left
+from .callbacks import can_escape_right
+from .callbacks import can_escape_up
+from .callbacks import can_escape_down
+from .callbacks import is_bomb_under_players_feet
+
 
 import numpy as np
 from main import *
@@ -120,150 +130,62 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         #events.append(PLACEHOLDER_EVENT)
 
 
-
-
-
-
-
-
-
-
     # state_to_features is defined in callbacks.py
     self.transitions.append(Transition(state_to_features(old_game_state), self_action, state_to_features(new_game_state), reward_from_events(self, events)))
     
+
 
     #
     #
     #   ---   Compute State Index of old_game_state 
     #
     #
-    
-    
-    #
     #   Agent
-    #
     old_agent_pos = old_game_state["self"][3]
-    old_agent_pos_index = (old_agent_pos[0] - 1 + cols * (old_agent_pos[1] - 1)) + 1
-        
-
-    
-        
-        
-    #
-    #   Coin
-    #
+    old_agent_pos_index = compute_agent_pos_index(old_agent_pos)
+          
+    #   Coin, Crate, Bomb 
     old_closest_coin = find_closest_coin(old_game_state)
-    old_coin_pos_index = 1  # this could be an issue
-    if old_closest_coin != None:
-        old_coin_pos_index = (old_closest_coin[0] - 1 + cols * (old_closest_coin[1] - 1)) + 1
-
-
-    #
-    #   Crate
-    #
     old_closest_crate = find_closest_crate(old_game_state)
-    old_crate_pos_index = 1  # this could be an issue
-    if old_closest_crate != None:
-        old_crate_pos_index = (old_closest_crate[0] - 1 + cols * (old_closest_crate[1] - 1)) + 1
-
-
-    #
-    #   Bomb
-    #
-    old_closest_bomb = find_closest_bomb(old_game_state)
-    old_bomb_pos_index = 0  # this could be an issue
-    if old_closest_bomb != None:
-        old_bomb_pos_index = (old_closest_bomb[0][0] - 1 + cols * (old_closest_bomb[0][1] - 1)) + 1
-    else:
-        pass
-        # todo: what if there is no bomb?
+    old_closest_bomb = find_closest_bomb(old_game_state)    
+    old_coin_pos_index, old_crate_pos_index, old_bomb_pos_index = compute_indices(old_closest_coin, old_closest_crate, old_closest_bomb)
+    old_is_bomb_under_players_feet = is_bomb_under_players_feet(old_game_state)
         
-    #
     #   Compute Pull Factor
-    #
-    old_pull_index = 1
-    if old_closest_coin == None and old_closest_crate != None:  # only crate, use crate index
-        old_pull_index = old_crate_pos_index
-    elif old_closest_coin != None and old_closest_crate == None: # only coin, use coin index
-        old_pull_index = old_coin_pos_index
-    elif old_closest_coin != None and old_closest_crate != None: # crate and coin, prefer coin over crate
-        old_pull_index = old_coin_pos_index
-        
-    
- 
-        
+    old_pull_index = compute_pull_factor_index(old_game_state, old_crate_pos_index, old_coin_pos_index)
+            
     #   Compute Index
-    #old_state_index = old_agent_pos_index * (cells - 1) + old_coin_pos_index - 1
-    old_state_index = old_agent_pos_index * (cells - 1) + old_pull_index * (cols - 1) + old_bomb_pos_index - 1      # is this correct?
+    old_state_index = compute_state_index(old_game_state, old_agent_pos_index, old_pull_index, old_bomb_pos_index, old_is_bomb_under_players_feet)
 
     #   Compute Action Index of old_game_state
     old_action_index = action_to_index[self_action]
     
     
-    
-    
-    #
-    #   Compute State Index of new_game_state
-    #
-    # (1,1) <= agent_position <= (7,7) = 1 <= index <= 49
-    #new_agent_pos   = new_game_state["self"][3]
-    #new_agent_pos_x = new_agent_pos[0]
-    #new_agent_pos_y = new_agent_pos[1]
-    #new_agent_pos_index = (new_agent_pos_x - 1 + cols  * (new_agent_pos_y - 1)) + 1
-    
-    # Coin position
-    #new_possible_closest_coin = find_closest_coin(new_game_state)
-    #new_coin_pos_index = 1
-    
-    #if new_possible_closest_coin != None:
-    #    new_coin_pos_index = (new_possible_closest_coin[0] - 1 + cols * (new_possible_closest_coin[1] - 1)) + 1
-    #else:
-        #print("Couldnt find a coin")
-    
+
     
     #
     #
     #   ---   Compute State Index of new_game_state
     #
     #
-    
-    #
     #   Agent
-    #
     new_agent_pos = new_game_state["self"][3]
-    new_agent_pos_index = (new_agent_pos[0] - 1 + cols * (new_agent_pos[1] - 1)) + 1
-    
-    
+    new_agent_pos_index = compute_agent_pos_index(new_agent_pos)
         
-        
-    #
-    #   Coin
-    #
+    #   Coin, Crate, Bomb
     new_closest_coin = find_closest_coin(new_game_state)
-    new_coin_pos_index = 1  # this could be an issue
-    if new_closest_coin != None:
-        new_coin_pos_index = (new_closest_coin[0] - 1 + cols * (new_closest_coin[1] - 1)) + 1
-
-
-    #
-    #   Crate
-    #
     new_closest_crate = find_closest_crate(new_game_state)
-    new_crate_pos_index = 1  # this could be an issue
-    if new_closest_crate != None:
-        new_crate_pos_index = (new_closest_crate[0] - 1 + cols * (new_closest_crate[1] - 1)) + 1
+    new_closest_bomb = find_closest_bomb(new_game_state)    
+    new_coin_pos_index, new_crate_pos_index, new_bomb_pos_index = compute_indices(new_closest_coin, new_closest_crate, new_closest_bomb)
+    new_is_bomb_under_players_feet = is_bomb_under_players_feet(new_game_state)
+
+    #   Compute Pull Factor
+    new_pull_index = compute_pull_factor_index(new_game_state, new_crate_pos_index, new_coin_pos_index)
+        
+    #   Compute Index
+    new_state_index = compute_state_index(new_game_state, new_agent_pos_index, new_pull_index, new_bomb_pos_index, new_is_bomb_under_players_feet)
 
 
-    #
-    #   Bomb
-    #
-    new_closest_bomb = find_closest_bomb(new_game_state)
-    new_bomb_pos_index = 0  # this could be an issue
-    if new_closest_bomb != None:
-        new_bomb_pos_index = (new_closest_bomb[0][0] - 1 + cols * (new_closest_bomb[0][1] - 1)) + 1
-    else:
-        pass
-        # todo: what if there is no bomb?
 
 
     #
@@ -279,7 +201,6 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                 self.logger.debug("BOMB_DROPPED_NEXT_TO_CRATE")
             else:
                 events.append(e.BOMB_DROPPED_AWAY_FROM_CRATE)
-
 
 
     #
@@ -307,6 +228,56 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
             events.append(e.SURVIVED_BOMB)
             global bombs_survived
             bombs_survived = bombs_survived + 1
+
+    #
+    #   Custom Event: Bomb dropped, check for escape routes and choose a good one
+    #
+
+    if is_bomb_under_players_feet(old_game_state):
+        self.logger.debug("BOMB_DROPPED ...")
+        print("BOMB_DROPPED ...") 
+        print(can_escape_left(old_game_state))
+        print(can_escape_right(old_game_state))
+        print(can_escape_up(old_game_state))
+        print(can_escape_down(old_game_state))
+        print(self_action)
+        if can_escape_left(old_game_state) == 1 and self_action == "LEFT":
+            events.append(e.CHOSE_GOOD_ESCAPE)
+            self.logger.debug("CHOSE_GOOD_ESCAPE")
+            print("CHOSE_GOOD_ESCAPE") 
+        elif can_escape_right(old_game_state) == 1 and self_action == "RIGHT":
+            events.append(e.CHOSE_GOOD_ESCAPE)
+            self.logger.debug("CHOSE_GOOD_ESCAPE")
+            print("CHOSE_GOOD_ESCAPE") 
+        elif can_escape_down(old_game_state) == 1 and self_action == "DOWN":
+            events.append(e.CHOSE_GOOD_ESCAPE)
+            self.logger.debug("CHOSE_GOOD_ESCAPE")
+            print("CHOSE_GOOD_ESCAPE") 
+        elif can_escape_up(old_game_state) == 1 and self_action == "UP":
+            events.append(e.CHOSE_GOOD_ESCAPE)
+            self.logger.debug("CHOSE_GOOD_ESCAPE")
+            print("CHOSE_GOOD_ESCAPE") 
+        elif can_escape_left(old_game_state) == 0 and self_action == "LEFT":
+            events.append(e.CHOSE_BAD_ESCAPE)
+            self.logger.debug("CHOSE_BAD_ESCAPE")
+            print("CHOSE_BAD_ESCAPE") 
+        elif can_escape_right(old_game_state) == 0 and self_action == "RIGHT":
+            events.append(e.CHOSE_BAD_ESCAPE)
+            self.logger.debug("CHOSE_BAD_ESCAPE")
+            print("CHOSE_BAD_ESCAPE") 
+        elif can_escape_down(old_game_state) == 0 and self_action == "DOWN":
+            events.append(e.CHOSE_BAD_ESCAPE)
+            self.logger.debug("CHOSE_BAD_ESCAPE")
+            print("CHOSE_BAD_ESCAPE") 
+        elif can_escape_up(old_game_state) == 0 and self_action == "UP":
+            events.append(e.CHOSE_BAD_ESCAPE)
+            self.logger.debug("CHOSE_BAD_ESCAPE")
+            print("CHOSE_BAD_ESCAPE") 
+        elif self_action == "WAIT":
+            events.append(e.CHOSE_BAD_ESCAPE)
+            self.logger.debug("CHOSE_BAD_ESCAPE")
+            print("CHOSE_BAD_ESCAPE") 
+            
 
     #
     #   Custom event: Stepped away from bomb
@@ -348,24 +319,6 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #        events.append(e.IN_DANGER)
     #        print("IN DANGER")
         
-    #
-    #   Compute Pull Factor
-    #
-    new_pull_index = 1
-    if new_closest_coin == None and new_closest_crate != None:  # only crate, use crate index
-        new_pull_index = new_crate_pos_index
-    elif new_closest_coin != None and new_closest_crate == None: # only coin, use coin index
-        new_pull_index = new_coin_pos_index
-    elif new_closest_coin != None and new_closest_crate != None: # crate and coin, prefer coin over crate
-        new_pull_index = new_coin_pos_index
-        
-          
-        
-    
-    
-    #   Compute Index
-    #new_state_index = new_agent_pos_index * (cells - 1) + new_coin_pos_index - 1
-    new_state_index = new_agent_pos_index * (cells - 1) + new_pull_index * (cols - 1) + new_bomb_pos_index - 1      # is this correct?
 
 
 
@@ -373,10 +326,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     
     print(f"old_agent_pos: {old_agent_pos}")
     print(f"new_agent_pos: {new_agent_pos}")
-    
     print(f"old_state_index: {old_state_index}")
     print(f"new_state_index: {new_state_index}")
-
     print(f"self_action: {self_action}")
 
 
@@ -414,6 +365,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     
     self.mytransitions.append(MyTransition(new_game_state, self_action))
     
+    
+
 
 
 def end_of_round(self, last_game_state: dict, last_action: str, events: List[str]):
@@ -429,7 +382,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     
     :param self: The same object that is passed to all of your callbacks.
     """
-
+    print(f"LAST ACTION: {last_action}")
 
     #
     #   Custom event survived bomb cleanup
@@ -443,64 +396,22 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #
     #
     
-    #
     #   Agent
-    #
     last_agent_pos = last_game_state["self"][3]
-    last_agent_pos_index = (last_agent_pos[0] - 1 + cols * (last_agent_pos[1] - 1)) + 1
+    last_agent_pos_index = compute_agent_pos_index(last_agent_pos)
     
-    
-        
-        
-    #
-    #   Coin
-    #
+    #   Coin, Crate, Bomb
     last_closest_coin = find_closest_coin(last_game_state)
-    last_coin_pos_index = 1  # this could be an issue
-    if last_closest_coin != None:
-        last_coin_pos_index = (last_closest_coin[0] - 1 + cols * (last_closest_coin[1] - 1)) + 1
-
-
-    #
-    #   Crate
-    #
     last_closest_crate = find_closest_crate(last_game_state)
-    last_crate_pos_index = 1  # this could be an issue
-    if last_closest_crate != None:
-        last_crate_pos_index = (last_closest_crate[0] - 1 + cols * (last_closest_crate[1] - 1)) + 1
+    last_closest_bomb = find_closest_bomb(last_game_state)    
+    last_coin_pos_index, last_crate_pos_index, last_bomb_pos_index = compute_indices(last_closest_coin, last_closest_crate, last_closest_bomb)
+    last_is_bomb_under_players_feet = is_bomb_under_players_feet(last_game_state)
 
-
-    #
-    #   Bomb
-    #
-    last_closest_bomb = find_closest_bomb(last_game_state)
-    last_bomb_pos_index = 0  # this could be an issue
-    if last_closest_bomb != None:
-        last_bomb_pos_index = (last_closest_bomb[0][0] - 1 + cols * (last_closest_bomb[0][1] - 1)) + 1
-    else:
-        pass
-        # todo: what if there is no bomb?
-        
-        
-        
-    #
     #   Compute Pull Factor
-    #
-    last_pull_index = 1
-    if last_closest_coin == None and last_closest_crate != None:  # only crate, use crate index
-        last_pull_index = last_crate_pos_index
-    elif last_closest_coin != None and last_closest_crate == None: # only coin, use coin index
-        last_pull_index = last_coin_pos_index
-    elif last_closest_coin != None and last_closest_crate != None: # crate and coin, prefer coin over crate
-        last_pull_index = last_coin_pos_index
-        
-          
-        
-    
-    
+    last_pull_index = compute_pull_factor_index(last_game_state, last_crate_pos_index, last_coin_pos_index)
+
     #   Compute Index
-    #last_state_index = last_agent_pos_index * (cells - 1) + last_coin_pos_index - 1
-    last_state_index = last_agent_pos_index * (cells - 1) + last_pull_index * (cols - 1) + last_bomb_pos_index - 1      # is this correct?
+    last_state_index = compute_state_index(last_game_state, last_agent_pos_index, last_pull_index, last_bomb_pos_index, last_is_bomb_under_players_feet)
 
 
  
@@ -519,6 +430,10 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     self.Q[last_state_index][last_action_index] = new_value
 
     print(f"reward: {reward}")
+
+    #
+    #   Debugging
+    #
 
     #   Debug - coin found?
     for event in events:
@@ -576,8 +491,8 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
 def training_end():
     pass
-    
-   
+
+
 
 def reward_from_events(self, events: List[str]) -> int:
     """
@@ -592,21 +507,23 @@ def reward_from_events(self, events: List[str]) -> int:
     
     
     game_rewards = {
-        e.COIN_COLLECTED: 2,
-        e.WAITED: -0.2,
-        e.INVALID_ACTION: -0.2,
-        e.MOVED_RIGHT: -0.1,
-        e.MOVED_UP: -0.1,
-        e.MOVED_DOWN: -0.1,
-        e.MOVED_LEFT: -0.1,
+        #e.COIN_COLLECTED: 2,
+        #e.WAITED: -0.2,
+        e.INVALID_ACTION: -0.1,
+        #e.MOVED_RIGHT: -0.1,
+        #e.MOVED_UP: -0.1,
+        #e.MOVED_DOWN: -0.1,
+        #e.MOVED_LEFT: -0.1,
         #e.BOMB_DROPPED: 0.2,
         #e.CRATE_DESTROYED: .5,
         #e.IN_DANGER: -5,
         e.KILLED_SELF: -3.0,
         e.STEPPED_AWAY_FROM_BOMB: 1.0,
         #e.SURVIVED_BOMB: 1.0,
-        e.BOMB_DROPPED_NEXT_TO_CRATE: 2.0,
-        e.BOMB_DROPPED_AWAY_FROM_CRATE: -1.0
+        e.BOMB_DROPPED_NEXT_TO_CRATE: 1.0,
+        e.BOMB_DROPPED_AWAY_FROM_CRATE: -1.0,
+        e.CHOSE_GOOD_ESCAPE: 1.0,
+        e.CHOSE_BAD_ESCAPE: -1.0
         
         
     }

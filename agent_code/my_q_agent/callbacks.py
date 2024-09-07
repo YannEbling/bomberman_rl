@@ -14,6 +14,8 @@ ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 cols = (COLS - 2)
 cells = pow((COLS - 2), 2)
+ESCAPE_ROUTE_STATES = 16    # up, right, down, left
+
 
 RANDOM_ACTION = .1
 RANDOM_ACTION_LOW = .05
@@ -54,7 +56,7 @@ def setup(self):
         
         # ---
         
-        nr_states = pow(cells, 3)
+        nr_states = pow(cells, 3) + ESCAPE_ROUTE_STATES
         self.Q = np.random.rand(nr_states, len(ACTIONS)).astype(np.float32)
         
         
@@ -76,54 +78,21 @@ def act(self, game_state: dict) -> str:
     :param game_state: The dictionary that describes everything on the board.
     :return: The action to take as a string.
     """
-    
-    #
-    # to check, if q table is correctly saved and loaded
-    #
-    #for i in range(len(self.Q)):
-    #    self.logger.debug(f"Q {self.Q[i]}")
-    
-  
-    
-
-    
 
     
     #---
     # Get Q vector for current player position and coin position 
     # 'self': (str, int, bool, (int, int))
     agent_pos = game_state["self"][3]
-    agent_pos_index = (agent_pos[0] - 1 + cols * (agent_pos[1] - 1)) + 1
+    agent_pos_index = compute_agent_pos_index(agent_pos)
 
-    
-    #
-    #   Coin
-    #
+    # coin, crate, bomb positions and indices
     closest_coin = find_closest_coin(game_state)
-    coin_pos_index = 1  # this could be an issue
-    if closest_coin != None:
-        coin_pos_index = (closest_coin[0] - 1 + cols * (closest_coin[1] - 1)) + 1
-
-
-    #
-    #   Crate
-    #
     closest_crate = find_closest_crate(game_state)
-    crate_pos_index = 1  # this could be an issue
-    if closest_crate != None:
-        crate_pos_index = (closest_crate[0] - 1 + cols * (closest_crate[1] - 1)) + 1
-
-
-    #
-    #   Bomb
-    #
     closest_bomb = find_closest_bomb(game_state)
-    bomb_pos_index = 0  # this could be an issue
-    if closest_bomb != None:
-        bomb_pos_index = (closest_bomb[0][0] - 1 + cols * (closest_bomb[0][1] - 1)) + 1
-    else:
-        pass
-        # todo: what if there is no bomb?
+    coin_pos_index, crate_pos_index, bomb_pos_index = compute_indices(closest_coin, closest_crate, closest_bomb)
+
+
 
 
 
@@ -154,13 +123,7 @@ def act(self, game_state: dict) -> str:
     #   Decision Making
     #
     
-    pull_index = 1
-    if closest_coin == None and closest_crate != None:  # only crate, use crate index
-        pull_index = crate_pos_index
-    elif closest_coin != None and closest_crate == None: # only coin, use coin index
-        pull_index = coin_pos_index
-    elif closest_coin != None and closest_crate != None: # crate and coin, prefer coin over crate
-        pull_index = coin_pos_index
+    pull_index = compute_pull_factor_index(game_state, crate_pos_index, coin_pos_index)
         
     
     
@@ -168,7 +131,8 @@ def act(self, game_state: dict) -> str:
     #
     #   Compute Index
     #
-    state_index = agent_pos_index * (cells - 1) + pull_index * (cols - 1) + bomb_pos_index - 1      # is this correct?
+    bomb_under_feet = is_bomb_under_players_feet(game_state)
+    state_index = compute_state_index(game_state, agent_pos_index, pull_index, bomb_pos_index, bomb_under_feet)
     actions = self.Q[state_index]
     final_decision = np.argmax(actions)
     action_chosen = ACTIONS[final_decision]
@@ -183,6 +147,162 @@ def act(self, game_state: dict) -> str:
 
 def dist(x0, x1, y0, y1):
     return math.sqrt(pow((x1 - x0), 2) + pow((y1 - y0), 2))
+
+def can_escape_left(game_state):
+    agent_pos = game_state["self"][3]
+    ag_x = agent_pos[0]
+    ag_y = agent_pos[1]
+    
+    field = game_state["field"]
+    
+    for i in range(1, 4):
+        
+        # check for out of bounds
+        if ag_x - i < 0 or ag_x - i >= ROWS:
+            return 0
+        
+        # check infront
+        tile = field[ag_x - i][ag_y]
+        if tile != 0:   # tile is crate (1) or stone wall (-1)
+            return 0
+            
+        # check top
+        tile = field[ag_x - i][ag_y - 1]
+        if tile == 0: 
+            return 1
+        
+        # check bottom
+        tile = field[ag_x - i][ag_y + 1]
+        if tile == 0:
+            return 1
+    
+    # check for out of bounds
+    if ag_x - 4 < 0 or ag_x - 4 >= ROWS:
+        return 0
+        
+    # check last tile that is right out of range of bomb
+    tile = field[ag_x - 4][ag_y]
+    if tile == 0:
+        return 1
+        
+    return 0
+
+def can_escape_right(game_state):
+    agent_pos = game_state["self"][3]
+    ag_x = agent_pos[0]
+    ag_y = agent_pos[1]
+    
+    field = game_state["field"]
+    
+    for i in range(1, 4):
+    
+        # check for out of bounds
+        if ag_x + i < 0 or ag_x + i >= ROWS:
+            return 0
+    
+        # check infront
+        tile = field[ag_x + i][ag_y]
+        if tile != 0:   # tile is crate (1) or stone wall (-1)
+            return 0
+            
+        # check top
+        tile = field[ag_x + i][ag_y - 1]
+        if tile == 0: 
+            return 1
+        
+        # check bottom
+        tile = field[ag_x + i][ag_y + 1]
+        if tile == 0:
+            return 1
+    
+    # check for out of bounds
+    if ag_x + 4 < 0 or ag_x + 4 >= ROWS:
+        return 0
+    
+    # check last tile that is right out of range of bomb
+    tile = field[ag_x + 4][ag_y]
+    if tile == 0:
+        return 1
+        
+    return 0
+    
+def can_escape_up(game_state):
+    agent_pos = game_state["self"][3]
+    ag_x = agent_pos[0]
+    ag_y = agent_pos[1]
+    
+    field = game_state["field"]
+    
+    for i in range(1, 4):
+    
+        # check for out of bounds
+        if ag_y - i < 0 or ag_y - i >= COLS:
+            return 0
+    
+        # check infront
+        tile = field[ag_x][ag_y - i]
+        if tile != 0:   # tile is crate (1) or stone wall (-1)
+            return 0
+            
+        # check left
+        tile = field[ag_x - 1][ag_y - i]
+        if tile == 0: 
+            return 1
+        
+        # check right
+        tile = field[ag_x + 1][ag_y - i]
+        if tile == 0:
+            return 1
+            
+    # check for out of bounds
+    if ag_y - 4 < 0 or ag_y - 4 >= ROWS:
+        return 0
+    
+    # check last tile that is right out of range of bomb
+    tile = field[ag_x][ag_y - 4]
+    if tile == 0:
+        return 1
+        
+    return 0
+    
+def can_escape_down(game_state):
+    agent_pos = game_state["self"][3]
+    ag_x = agent_pos[0]
+    ag_y = agent_pos[1]
+    
+    field = game_state["field"]
+    
+    for i in range(1, 4):
+    
+        # check for out of bounds
+        if ag_y + i < 0 or ag_y + i >= COLS:
+            return 0
+    
+        # check infront
+        tile = field[ag_x][ag_y + i]
+        if tile != 0:   # tile is crate (1) or stone wall (-1)
+            return 0
+            
+        # check left
+        tile = field[ag_x - 1][ag_y + i]
+        if tile == 0: 
+            return 1
+        
+        # check right
+        tile = field[ag_x + 1][ag_y + i]
+        if tile == 0:
+            return 1
+    
+    # check for out of bounds
+    if ag_y + 4 < 0 or ag_y + 4 >= ROWS:
+        return 0
+    
+    # check last tile that is right out of range of bomb
+    tile = field[ag_x][ag_y + 4]
+    if tile == 0:
+        return 1
+        
+    return 0
 
 def find_closest_coin(game_state: dict):
     coins = game_state["coins"]
@@ -241,6 +361,71 @@ def find_closest_crate(game_state: dict):
     
     return closest_crate
 
+def is_bomb_under_players_feet(game_state):
+    agent_pos = game_state["self"][3]
+    bombs = game_state["bombs"]
+    if bombs == None:
+        return False
+    for bomb in bombs:
+        bomb_pos = bomb[0]
+        if agent_pos[0] == bomb_pos[0] and agent_pos[1] == bomb_pos[1]:
+            return True
+    return False
+
+def compute_state_index(game_state, agent_pos_index, pull_index, bomb_pos_index, bomb_under_players_feet):
+    if bomb_under_players_feet:
+        left = can_escape_left(game_state)
+        right = can_escape_right(game_state)
+        up = can_escape_up(game_state)
+        down = can_escape_down(game_state)
+        index = left * 8 + right * 4 + up * 2 + down * 1
+        return index
+    
+    index = agent_pos_index * (cells - 1) + pull_index * (cols - 1) + bomb_pos_index - 1      # is this correct?
+    index = index + 16 # for the new 16 bomb dropped, available escape routes states
+    
+    return index
+
+def compute_agent_pos_index(agent_pos): 
+    return (agent_pos[0] - 1 + cols * (agent_pos[1] - 1)) + 1    
+
+def compute_pull_factor_index(game_state, crate_pos_index, coin_pos_index):
+    
+    closest_coin = find_closest_coin(game_state)
+    closest_crate = find_closest_crate(game_state)
+    closest_bomb = find_closest_bomb(game_state)
+    
+    pull_index = 1
+    if closest_coin == None and closest_crate != None:  # only crate, use crate index
+        pull_index = crate_pos_index
+    elif closest_coin != None and closest_crate == None: # only coin, use coin index
+        pull_index = coin_pos_index
+    elif closest_coin != None and closest_crate != None: # crate and coin, prefer coin over crate
+        pull_index = coin_pos_index
+    return pull_index
+
+def compute_indices(closest_coin, closest_crate, closest_bomb):
+
+    #   Coin
+    coin_pos_index = 1  # this could be an issue
+    if closest_coin != None:
+        coin_pos_index = (closest_coin[0] - 1 + cols * (closest_coin[1] - 1)) + 1
+
+    #   Crate
+    crate_pos_index = 1  # this could be an issue
+    if closest_crate != None:
+        crate_pos_index = (closest_crate[0] - 1 + cols * (closest_crate[1] - 1)) + 1
+
+    #   Bomb
+    bomb_pos_index = 0  # this could be an issue
+    if closest_bomb != None:
+        bomb_pos_index = (closest_bomb[0][0] - 1 + cols * (closest_bomb[0][1] - 1)) + 1
+    else:
+        pass
+        # todo: what if there is no bomb?
+      
+    return coin_pos_index, crate_pos_index, bomb_pos_index
+   
 
 def state_to_features(game_state: dict) -> np.array:
     """
