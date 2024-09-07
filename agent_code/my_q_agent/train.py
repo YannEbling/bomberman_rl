@@ -164,14 +164,14 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     old_closest_crate = find_closest_crate(old_game_state)
     old_crate_pos_index = 1  # this could be an issue
     if old_closest_crate != None:
-        old_crate_pos_index = (old_closest_crate[0] - 1 + cols * (old_closest_crate[0] - 1)) + 1
+        old_crate_pos_index = (old_closest_crate[0] - 1 + cols * (old_closest_crate[1] - 1)) + 1
 
 
     #
     #   Bomb
     #
     old_closest_bomb = find_closest_bomb(old_game_state)
-    old_bomb_pos_index = 1  # this could be an issue
+    old_bomb_pos_index = 0  # this could be an issue
     if old_closest_bomb != None:
         old_bomb_pos_index = (old_closest_bomb[0][0] - 1 + cols * (old_closest_bomb[0][1] - 1)) + 1
     else:
@@ -258,12 +258,28 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #   Bomb
     #
     new_closest_bomb = find_closest_bomb(new_game_state)
-    new_bomb_pos_index = 1  # this could be an issue
+    new_bomb_pos_index = 0  # this could be an issue
     if new_closest_bomb != None:
         new_bomb_pos_index = (new_closest_bomb[0][0] - 1 + cols * (new_closest_bomb[0][1] - 1)) + 1
     else:
         pass
         # todo: what if there is no bomb?
+
+
+    #
+    #   Custom Event: Bomb placed directly at crate?
+    #
+
+    for event in events:
+        if event == e.BOMB_DROPPED:             
+            dist_to_crate = math.sqrt(pow((new_closest_crate[0] - new_agent_pos[0]), 2) + pow((new_closest_crate[1] - new_agent_pos[1]), 2))
+            if dist_to_crate <= 1.01:
+                events.append(e.BOMB_DROPPED_NEXT_TO_CRATE)
+                print("BOMB_DROPPED_NEXT_TO_CRATE")
+                self.logger.debug("BOMB_DROPPED_NEXT_TO_CRATE")
+            else:
+                events.append(e.BOMB_DROPPED_AWAY_FROM_CRATE)
+
 
 
     #
@@ -353,10 +369,15 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
 
 
+    
+    
+    print(f"old_agent_pos: {old_agent_pos}")
+    print(f"new_agent_pos: {new_agent_pos}")
+    
+    print(f"old_state_index: {old_state_index}")
+    print(f"new_state_index: {new_state_index}")
 
-
-
-
+    print(f"self_action: {self_action}")
 
 
 
@@ -446,14 +467,14 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     last_closest_crate = find_closest_crate(last_game_state)
     last_crate_pos_index = 1  # this could be an issue
     if last_closest_crate != None:
-        last_crate_pos_index = (last_closest_crate[0] - 1 + cols * (last_closest_crate[0] - 1)) + 1
+        last_crate_pos_index = (last_closest_crate[0] - 1 + cols * (last_closest_crate[1] - 1)) + 1
 
 
     #
     #   Bomb
     #
     last_closest_bomb = find_closest_bomb(last_game_state)
-    last_bomb_pos_index = 1  # this could be an issue
+    last_bomb_pos_index = 0  # this could be an issue
     if last_closest_bomb != None:
         last_bomb_pos_index = (last_closest_bomb[0][0] - 1 + cols * (last_closest_bomb[0][1] - 1)) + 1
     else:
@@ -494,7 +515,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     factor1 = ( 1.0 - ALPHA ) * self.Q[last_state_index][last_action_index]
     factor2 = GAMMA * self.Q[last_state_index][argmax]
     factor3 = ALPHA * ( reward + factor2 )
-    new_value = factor1 + factor2 + factor3
+    new_value = factor1 + factor3
     self.Q[last_state_index][last_action_index] = new_value
 
     print(f"reward: {reward}")
@@ -571,21 +592,23 @@ def reward_from_events(self, events: List[str]) -> int:
     
     
     game_rewards = {
-        #e.COIN_COLLECTED: 15,
-        #e.KILLED_OPPONENT: 5,
-        #e.WAITED: -0.2,
-        #e.INVALID_ACTION: -3.2,
-        #e.MOVED_RIGHT: 0.2,
-        #e.MOVED_UP: 0.2,
-        #e.MOVED_DOWN: 0.2,
-        #e.MOVED_LEFT: 0.2,
-        #e.BOMB_DROPPED: 0.0,
-        #e.CRATE_DESTROYED: 10.0,
+        e.COIN_COLLECTED: 2,
+        e.WAITED: -0.2,
+        e.INVALID_ACTION: -0.2,
+        e.MOVED_RIGHT: -0.1,
+        e.MOVED_UP: -0.1,
+        e.MOVED_DOWN: -0.1,
+        e.MOVED_LEFT: -0.1,
+        #e.BOMB_DROPPED: 0.2,
+        #e.CRATE_DESTROYED: .5,
         #e.IN_DANGER: -5,
-        #e.KILLED_SELF: -5.0,
+        e.KILLED_SELF: -3.0,
         e.STEPPED_AWAY_FROM_BOMB: 1.0,
-        e.SURVIVED_BOMB: 10.0
-        #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
+        #e.SURVIVED_BOMB: 1.0,
+        e.BOMB_DROPPED_NEXT_TO_CRATE: 2.0,
+        e.BOMB_DROPPED_AWAY_FROM_CRATE: -1.0
+        
+        
     }
     reward_sum = 0
     for event in events:

@@ -15,7 +15,8 @@ ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 cols = (COLS - 2)
 cells = pow((COLS - 2), 2)
 
-RANDOM_ACTION = .15
+RANDOM_ACTION = .1
+RANDOM_ACTION_LOW = .05
 
 def setup(self):
     """
@@ -84,14 +85,7 @@ def act(self, game_state: dict) -> str:
     
   
     
-    # todo Exploration vs exploitation
-    #if self.train and random.random() < RANDOM_ACTION:
-    if random.random() < RANDOM_ACTION:
-        self.logger.debug("Choosing action purely at random.")
-        #return np.random.choice(ACTIONS, p=[.225, .225, .225, .225, .0, .1])
-        return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .0, .2])
 
-    self.logger.debug("Querying model for action.")
     
 
     
@@ -124,12 +118,37 @@ def act(self, game_state: dict) -> str:
     #   Bomb
     #
     closest_bomb = find_closest_bomb(game_state)
-    bomb_pos_index = 1  # this could be an issue
+    bomb_pos_index = 0  # this could be an issue
     if closest_bomb != None:
         bomb_pos_index = (closest_bomb[0][0] - 1 + cols * (closest_bomb[0][1] - 1)) + 1
     else:
         pass
         # todo: what if there is no bomb?
+
+
+
+    # todo Exploration vs exploitation
+    if self.train and random.random() < RANDOM_ACTION:
+    #if random.random() < RANDOM_ACTION_LOW:
+        self.logger.debug("Choosing action purely at random.")
+        #return np.random.choice(ACTIONS, p=[.225, .225, .225, .225, .0, .1])
+        return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .0, .2])
+        
+    # only random action during normal game, when no bomb is close enough
+    elif random.random() < RANDOM_ACTION:
+        if closest_bomb == None:
+            print("random act")
+            return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .0, .2])
+        elif dist(agent_pos[0], closest_bomb[0][0], agent_pos[1], closest_bomb[0][1]) >= 4.0:
+            print("random act")
+            return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .0, .2])
+        
+            
+                
+
+    self.logger.debug("Querying model for action.")
+
+
 
     #
     #   Decision Making
@@ -162,6 +181,8 @@ def act(self, game_state: dict) -> str:
    
     return action_chosen
 
+def dist(x0, x1, y0, y1):
+    return math.sqrt(pow((x1 - x0), 2) + pow((y1 - y0), 2))
 
 def find_closest_coin(game_state: dict):
     coins = game_state["coins"]
