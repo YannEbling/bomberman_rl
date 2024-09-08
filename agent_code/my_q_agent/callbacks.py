@@ -14,8 +14,12 @@ ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 cols = (COLS - 2)
 cells = pow((COLS - 2), 2)
-ESCAPE_ROUTE_STATES = 16    # up, right, down, left
 
+VOID_STATE = 1
+ESCAPE_ROUTE_STATES = 16                                # up, right, down, left
+RUN_FROM_BOMB_STATES = pow(cells, 2)                    # Player.pos x nearest bomb.pos, 225^2
+EVADE_EXPLOSION_ON_FIELD_STATES = pow(cells, 2)         # Player.pos x nearest explosion_tile.pos 225^2
+MOVE_TO_CRATE_COIN_PLAYER_STATES = pow(cells, 2)        # Player.pos x nearest coin or crate or player
 
 RANDOM_ACTION = .1
 RANDOM_ACTION_LOW = .05
@@ -38,7 +42,7 @@ def setup(self):
     #
     #   Time Analysis
     #
-
+    
     
     #
     #   For Retraining Existing Model
@@ -56,7 +60,7 @@ def setup(self):
         
         # ---
         
-        nr_states = pow(cells, 3) + ESCAPE_ROUTE_STATES
+        nr_states = VOID_STATE + ESCAPE_ROUTE_STATES + RUN_FROM_BOMB_STATES + EVADE_EXPLOSION_ON_FIELD_STATES + MOVE_TO_CRATE_COIN_PLAYER_STATES
         self.Q = np.random.rand(nr_states, len(ACTIONS)).astype(np.float32)
         
         
@@ -79,6 +83,14 @@ def act(self, game_state: dict) -> str:
     :return: The action to take as a string.
     """
 
+    #print("test")
+    #print(is_atleast_one_bomb_on_field(game_state))
+    #print(game_state["bombs"])
+    #print("explosion map")
+    #for i in game_state["explosion_map"]:
+    #    print(i)
+    #print(np.sum(game_state["explosion_map"]))
+      
     
     #---
     # Get Q vector for current player position and coin position 
@@ -90,7 +102,8 @@ def act(self, game_state: dict) -> str:
     closest_coin = find_closest_coin(game_state)
     closest_crate = find_closest_crate(game_state)
     closest_bomb = find_closest_bomb(game_state)
-    coin_pos_index, crate_pos_index, bomb_pos_index = compute_indices(closest_coin, closest_crate, closest_bomb)
+    closest_explosion_tile = find_closest_explosion_tile(game_state)
+    coin_pos_index, crate_pos_index, bomb_pos_index, explosion_tile_index = compute_indices(closest_coin, closest_crate, closest_bomb, closest_explosion_tile)
 
 
 
@@ -131,8 +144,7 @@ def act(self, game_state: dict) -> str:
     #
     #   Compute Index
     #
-    bomb_under_feet = is_bomb_under_players_feet(game_state)
-    state_index = compute_state_index(game_state, agent_pos_index, pull_index, bomb_pos_index, bomb_under_feet)
+    state_index = compute_state_index(game_state, agent_pos_index, pull_index, bomb_pos_index, explosion_tile_index)
     actions = self.Q[state_index]
     final_decision = np.argmax(actions)
     action_chosen = ACTIONS[final_decision]
@@ -312,7 +324,7 @@ def find_closest_coin(game_state: dict):
         return None
         
     closest_coin = coins[0]
-    closest_coin_dist = 1.7976931348623157e+308 # max float value
+    closest_coin_dist = 1.797e+308 # max float value
     for i in range(len(coins)):
         coin_pos = coins[i]
         agent_pos = agent[3]
@@ -331,7 +343,7 @@ def find_closest_bomb(game_state: dict):
         return None
         
     closest_bomb = bombs[0]
-    closest_bomb_dist = 1.7976931348623157e+308 # max float value
+    closest_bomb_dist = 1.797e+308 # max float value
     for i in range(len(bombs)):
         bomb_pos = bombs[i][0]
         agent_pos = agent[3]
@@ -348,9 +360,9 @@ def find_closest_crate(game_state: dict):
     field_shape = field.shape
     
     closest_crate = None
-    closest_crate_dist = 1.7976931348623157e+308 # max float value
-    for x in range(field_shape[0]): # is this x starting at top left?
-        for y in range(field_shape[1]): # is this y starting at top left?
+    closest_crate_dist = 1.797e+308 # max float value
+    for x in range(field_shape[0]): 
+        for y in range(field_shape[1]): 
             tile = field[x][y]  
             if tile == 1: # 1 = crate
                 agent_pos = agent[3]
@@ -361,30 +373,46 @@ def find_closest_crate(game_state: dict):
     
     return closest_crate
 
+def is_explosion_on_field(game_state):
+    if np.sum(game_state["explosion_map"]) > 0.0:
+        return True
+    else:
+        return False 
+    
+def find_closest_explosion_tile(game_state):
+    if not is_explosion_on_field:
+        return None
+    
+    explosion_map = game_state["explosion_map"]
+    agent = game_state["self"]
+    
+    closest_explosion_tiel = None
+    closest_explosion_tiel_dist = 1.797e+308 # max float value
+    for x in range(explosion_map.shape[0]): 
+        for y in range(explosion_map.shape[1]): 
+            tile = explosion_map[x][y]  
+            if tile == 1: # 1 = explosion tile
+                agent_pos = agent[3]
+                euclid_dist = math.sqrt(pow((x - agent_pos[0]), 2) + pow((y - agent_pos[1]), 2))
+                if euclid_dist < closest_explosion_tiel_dist:
+                    closest_explosion_tiel = (x, y)
+                    closest_explosion_tiel_dist = euclid_dist   
+                    
+    return closest_explosion_tiel
+
 def is_bomb_under_players_feet(game_state):
     agent_pos = game_state["self"][3]
     bombs = game_state["bombs"]
-    if bombs == None:
+    if len(bombs) == 0:
         return False
     for bomb in bombs:
         bomb_pos = bomb[0]
         if agent_pos[0] == bomb_pos[0] and agent_pos[1] == bomb_pos[1]:
             return True
     return False
-
-def compute_state_index(game_state, agent_pos_index, pull_index, bomb_pos_index, bomb_under_players_feet):
-    if bomb_under_players_feet:
-        left = can_escape_left(game_state)
-        right = can_escape_right(game_state)
-        up = can_escape_up(game_state)
-        down = can_escape_down(game_state)
-        index = left * 8 + right * 4 + up * 2 + down * 1
-        return index
     
-    index = agent_pos_index * (cells - 1) + pull_index * (cols - 1) + bomb_pos_index - 1      # is this correct?
-    index = index + 16 # for the new 16 bomb dropped, available escape routes states
-    
-    return index
+def is_atleast_one_bomb_on_field(game_state):
+    return len(game_state["bombs"]) != 0
 
 def compute_agent_pos_index(agent_pos): 
     return (agent_pos[0] - 1 + cols * (agent_pos[1] - 1)) + 1    
@@ -404,28 +432,56 @@ def compute_pull_factor_index(game_state, crate_pos_index, coin_pos_index):
         pull_index = coin_pos_index
     return pull_index
 
-def compute_indices(closest_coin, closest_crate, closest_bomb):
+def compute_indices(closest_coin, closest_crate, closest_bomb, closest_explosion_tile):
 
     #   Coin
-    coin_pos_index = 1  # this could be an issue
+    coin_pos_index = 0  # this could be an issue
     if closest_coin != None:
-        coin_pos_index = (closest_coin[0] - 1 + cols * (closest_coin[1] - 1)) + 1
+        coin_pos_index = (closest_coin[0] - 1) + cols * (closest_coin[1] - 1)
 
     #   Crate
-    crate_pos_index = 1  # this could be an issue
+    crate_pos_index = 0  # this could be an issue
     if closest_crate != None:
-        crate_pos_index = (closest_crate[0] - 1 + cols * (closest_crate[1] - 1)) + 1
+        crate_pos_index = (closest_crate[0] - 1) + cols * (closest_crate[1] - 1)
 
     #   Bomb
     bomb_pos_index = 0  # this could be an issue
     if closest_bomb != None:
-        bomb_pos_index = (closest_bomb[0][0] - 1 + cols * (closest_bomb[0][1] - 1)) + 1
-    else:
-        pass
-        # todo: what if there is no bomb?
+        bomb_pos_index = (closest_bomb[0][0] - 1) + cols * (closest_bomb[0][1] - 1)
+
+    explosion_tile_index = 0
+    if closest_explosion_tile != None:
+        explosion_tile_index = (closest_explosion_tile[0] - 1) + cols * (closest_explosion_tile[1] - 1)
+
       
-    return coin_pos_index, crate_pos_index, bomb_pos_index
-   
+    return coin_pos_index, crate_pos_index, bomb_pos_index, explosion_tile_index
+
+def compute_state_index(game_state, agent_pos_index, pull_index, bomb_pos_index, explosion_tile_pos_index):
+
+    index = 0
+    if is_bomb_under_players_feet(game_state):
+        left = can_escape_left(game_state)
+        right = can_escape_right(game_state)
+        up = can_escape_up(game_state)
+        down = can_escape_down(game_state)
+        index = VOID_STATE
+        index = index + left * 8 + right * 4 + up * 2 + down * 1
+        return index
+    
+    if is_atleast_one_bomb_on_field(game_state): # but not under agents feet
+        index = VOID_STATE + ESCAPE_ROUTE_STATES
+        index = index + agent_pos_index * cols + bomb_pos_index
+        return index
+        
+    if is_explosion_on_field(game_state):
+        index = VOID_STATE + ESCAPE_ROUTE_STATES + RUN_FROM_BOMB_STATES
+        index = index + agent_pos_index * cols + explosion_tile_pos_index
+        return index
+    
+    index = VOID_STATE + ESCAPE_ROUTE_STATES + RUN_FROM_BOMB_STATES + EVADE_EXPLOSION_ON_FIELD_STATES
+    index = index + agent_pos_index * cols + pull_index
+    
+    return index   
 
 def state_to_features(game_state: dict) -> np.array:
     """

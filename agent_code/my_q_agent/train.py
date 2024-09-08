@@ -19,6 +19,7 @@ from .callbacks import can_escape_right
 from .callbacks import can_escape_up
 from .callbacks import can_escape_down
 from .callbacks import is_bomb_under_players_feet
+from .callbacks import find_closest_explosion_tile
 
 
 import numpy as np
@@ -144,18 +145,20 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     old_agent_pos = old_game_state["self"][3]
     old_agent_pos_index = compute_agent_pos_index(old_agent_pos)
           
-    #   Coin, Crate, Bomb 
+        
+    # coin, crate, bomb positions and indices
     old_closest_coin = find_closest_coin(old_game_state)
     old_closest_crate = find_closest_crate(old_game_state)
-    old_closest_bomb = find_closest_bomb(old_game_state)    
-    old_coin_pos_index, old_crate_pos_index, old_bomb_pos_index = compute_indices(old_closest_coin, old_closest_crate, old_closest_bomb)
+    old_closest_bomb = find_closest_bomb(old_game_state)
+    old_closest_explosion_tile = find_closest_explosion_tile(old_game_state)
+    old_coin_pos_index, old_crate_pos_index, old_bomb_pos_index, old_explosion_tile_index = compute_indices(old_closest_coin, old_closest_crate, old_closest_bomb, old_closest_explosion_tile)
     old_is_bomb_under_players_feet = is_bomb_under_players_feet(old_game_state)
         
     #   Compute Pull Factor
     old_pull_index = compute_pull_factor_index(old_game_state, old_crate_pos_index, old_coin_pos_index)
             
     #   Compute Index
-    old_state_index = compute_state_index(old_game_state, old_agent_pos_index, old_pull_index, old_bomb_pos_index, old_is_bomb_under_players_feet)
+    old_state_index = compute_state_index(old_game_state, old_agent_pos_index, old_pull_index, old_bomb_pos_index, old_explosion_tile_index)
 
     #   Compute Action Index of old_game_state
     old_action_index = action_to_index[self_action]
@@ -176,14 +179,15 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     new_closest_coin = find_closest_coin(new_game_state)
     new_closest_crate = find_closest_crate(new_game_state)
     new_closest_bomb = find_closest_bomb(new_game_state)    
-    new_coin_pos_index, new_crate_pos_index, new_bomb_pos_index = compute_indices(new_closest_coin, new_closest_crate, new_closest_bomb)
+    new_closest_explosion_tile = find_closest_explosion_tile(new_game_state)
+    new_coin_pos_index, new_crate_pos_index, new_bomb_pos_index, new_explosion_tile_index = compute_indices(new_closest_coin, new_closest_crate, new_closest_bomb, new_closest_explosion_tile)
     new_is_bomb_under_players_feet = is_bomb_under_players_feet(new_game_state)
 
     #   Compute Pull Factor
     new_pull_index = compute_pull_factor_index(new_game_state, new_crate_pos_index, new_coin_pos_index)
         
     #   Compute Index
-    new_state_index = compute_state_index(new_game_state, new_agent_pos_index, new_pull_index, new_bomb_pos_index, new_is_bomb_under_players_feet)
+    new_state_index = compute_state_index(new_game_state, new_agent_pos_index, new_pull_index, new_bomb_pos_index, new_explosion_tile_index)
 
 
 
@@ -284,8 +288,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #
 
     if old_closest_bomb != None:
-        print(f"old_agent_pos: {old_agent_pos}")
-        print(f"new_agent_pos: {new_agent_pos}")
+        #print(f"old_agent_pos: {old_agent_pos}")
+        #print(f"new_agent_pos: {new_agent_pos}")
 
         old_dist_to_bomb = math.sqrt(pow((old_closest_bomb[0][0] - old_agent_pos[0]), 2) + pow((old_closest_bomb[0][1] - old_agent_pos[1]), 2))
         new_dist_to_bomb = math.sqrt(pow((old_closest_bomb[0][0] - new_agent_pos[0]), 2) + pow((old_closest_bomb[0][1] - new_agent_pos[1]), 2))
@@ -296,7 +300,10 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         if new_dist_to_bomb > old_dist_to_bomb:
             print("stepped away from bomb")
             events.append(e.STEPPED_AWAY_FROM_BOMB)
-
+        
+        elif new_dist_to_bomb < old_dist_to_bomb:
+            print("stepped towards bomb")
+            events.append(e.STEPPED_TOWARDS_BOMB)
 
 
     #
@@ -404,14 +411,15 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     last_closest_coin = find_closest_coin(last_game_state)
     last_closest_crate = find_closest_crate(last_game_state)
     last_closest_bomb = find_closest_bomb(last_game_state)    
-    last_coin_pos_index, last_crate_pos_index, last_bomb_pos_index = compute_indices(last_closest_coin, last_closest_crate, last_closest_bomb)
+    last_closest_explosion_tile = find_closest_explosion_tile(last_game_state)
+    last_coin_pos_index, last_crate_pos_index, last_bomb_pos_index, last_explosion_tile_index = compute_indices(last_closest_coin, last_closest_crate, last_closest_bomb, last_closest_explosion_tile)
     last_is_bomb_under_players_feet = is_bomb_under_players_feet(last_game_state)
 
     #   Compute Pull Factor
     last_pull_index = compute_pull_factor_index(last_game_state, last_crate_pos_index, last_coin_pos_index)
 
     #   Compute Index
-    last_state_index = compute_state_index(last_game_state, last_agent_pos_index, last_pull_index, last_bomb_pos_index, last_is_bomb_under_players_feet)
+    last_state_index = compute_state_index(last_game_state, last_agent_pos_index, last_pull_index, last_bomb_pos_index, last_explosion_tile_index)
 
 
  
@@ -517,8 +525,9 @@ def reward_from_events(self, events: List[str]) -> int:
         #e.BOMB_DROPPED: 0.2,
         #e.CRATE_DESTROYED: .5,
         #e.IN_DANGER: -5,
-        e.KILLED_SELF: -3.0,
+        e.KILLED_SELF: -1.0,
         e.STEPPED_AWAY_FROM_BOMB: 1.0,
+        e.STEPPED_TOWARDS_BOMB: -1.0,
         #e.SURVIVED_BOMB: 1.0,
         e.BOMB_DROPPED_NEXT_TO_CRATE: 1.0,
         e.BOMB_DROPPED_AWAY_FROM_CRATE: -1.0,
@@ -530,8 +539,6 @@ def reward_from_events(self, events: List[str]) -> int:
     reward_sum = 0
     for event in events:
         if event in game_rewards:
-            if event == e.SURVIVED_BOMB:
-                print("bomb survied lol")
             reward_sum += game_rewards[event]
     self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
     return reward_sum
