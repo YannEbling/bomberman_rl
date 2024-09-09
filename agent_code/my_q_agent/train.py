@@ -79,6 +79,20 @@ cells = pow((COLS - 2), 2)
 SAVE_INTERVAL = 100
 save_counter = 0
 
+# This function and the VALID_POSITIONS are necessary to perform the sped up training, looping over all possible
+# bomb_positions
+def condition(i: int, j: int, n: int) -> bool:
+    con1 = i % 2 != 0 or j % 2 != 0
+    con2 = i != 0 and j != 0
+    con3 = i != n and j != n
+    return con1 and con2 and con3
+
+
+N = cols+1
+DOMAIN = np.arange(0, 17)
+VALID_POSITIONS = [(i, j) for i in DOMAIN for j in DOMAIN if condition(i, j, N)] + [(0, 0)]
+
+
 def setup_training(self):
     """
     Initialise self for training purpose.
@@ -208,13 +222,55 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     
     # set new value
     self.Q[old_state_index][old_action_index] = new_value
-    
+
     self.logger.debug(f"new q value before update: {self.Q[old_state_index][old_action_index]}")
-    
-    
-    
-    self.mytransitions.append(MyTransition(new_game_state, self_action))
-    
+
+    # to speed up training, a virtual bomb is placed for every valid position. Then, the rewards that the chosen action
+    # would have resulted in are recorded and the Q matrix is updated.
+    for bomb_position in VALID_POSITIONS:
+        old_virtual_state = {
+                            'field': old_game_state['field'],
+                            'self': old_game_state['self'],
+                            'others': old_game_state['others'],
+                            'bombs': [[bomb_position]],
+                            'coins': old_game_state['coins']
+                            }
+
+        new_virtual_state = {
+                            'field': new_game_state['field'],
+                            'self': new_game_state['self'],
+                            'others': new_game_state['others'],
+                            'bombs': [[bomb_position]],
+                            'coins': new_game_state['coins']
+                            }
+
+        old_state_index = aux.state_to_index(old_virtual_state,
+                                             coin_index=old_possible_closest_coin_index,
+                                             bomb_index=0,
+                                             dim_reduce=True,
+                                             include_bombs=True,
+                                             include_crates=True)[0]
+
+        new_state_index = aux.state_to_index(game_state=new_virtual_state,
+                                             coin_index=new_possible_closest_coin_index,
+                                             bomb_index=0,
+                                             dim_reduce=True,
+                                             include_bombs=True,
+                                             include_crates=True)[0]
+
+        #
+        #   Update Q-value of state-action tupel
+        #
+        reward = reward_from_events(self, events)
+        argmax = np.argmax(self.Q[new_state_index])
+
+        factor1 = (1.0 - ALPHA) * self.Q[old_state_index][old_action_index]
+        factor2 = GAMMA * self.Q[new_state_index][argmax]
+        factor3 = ALPHA * (reward + factor2)
+
+        new_value = factor1 + factor3
+
+        self.Q[old_state_index][old_action_index] = new_value
    
     
     #---
