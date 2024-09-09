@@ -20,6 +20,8 @@ assert COLS == ROWS
 
 RANDOM_ACTION = .15
 
+custom_bomb_state = []
+
 def setup(self):
     """
     Setup your code. This is called once when loading each agent.
@@ -109,7 +111,9 @@ def act(self, game_state: dict) -> str:
     #    self.logger.debug(f"Q {self.Q[i]}")
     
     
-    
+    update_custom_bomb_state(game_state)
+    print(f"game_state['bombs']: {game_state['bombs']}")
+    print(f"custom_bomb_state  : {custom_bomb_state}")
     
     
     
@@ -158,10 +162,63 @@ def act(self, game_state: dict) -> str:
     self.logger.debug(f"Q[{index}]: {actions}")
     self.logger.debug(f"Argmax-action of row is {permuted_action}")
     self.logger.debug(f"Action chosen after reverting permutations {permutations}: {action_chosen}")
+
+
    
     #---
     return action_chosen
 
+def update_custom_bomb_state(game_state):
+
+    global custom_bomb_state
+
+    # update timer
+    updated_bombs = []
+    for i in range(len(custom_bomb_state)):
+        bomb = custom_bomb_state[i]
+        new_bomb = ((bomb[0][0], bomb[0][1]), bomb[1] - 1)
+        updated_bombs.append(new_bomb)
+
+    custom_bomb_state.clear()
+    for i in range(len(updated_bombs)):
+        bomb = updated_bombs[i]
+        custom_bomb_state.append(bomb)
+
+    updated_bombs.clear()
+
+    # add new to list
+    new_bombs = []
+    for i in range(len(game_state['bombs'])):
+        bomb = game_state['bombs'][i]
+        isIn = False
+        for j in range(len(custom_bomb_state)):
+            custom_bomb = custom_bomb_state[j]
+            if bomb[0] == custom_bomb[0]:
+                isIn = True
+                break
+
+        if not isIn:
+            new_bombs.append(bomb)
+
+    for i in range(len(new_bombs)):
+        bomb = new_bombs[i]
+        custom_bomb_state.append(bomb)
+
+    new_bombs.clear()
+
+    # remove old ones
+    remove_bombs = []
+    for i in range(len(custom_bomb_state)):
+        bomb = custom_bomb_state[i]
+        if bomb[1] <= -2:
+            remove_bombs.append(bomb)
+
+    for i in range(len(remove_bombs)):
+        bomb = remove_bombs[i]
+        # recheck this part
+        custom_bomb_state.remove(bomb)
+
+    remove_bombs.clear()
 
 def find_closest_coin(game_state: dict):
     coins = game_state["coins"]
@@ -181,7 +238,6 @@ def find_closest_coin(game_state: dict):
             closest_coin_dist = euclid_dist
     
     return closest_coin
-
 
 
 def state_to_features(game_state: dict) -> np.array:
