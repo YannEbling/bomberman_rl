@@ -118,13 +118,14 @@ def act(self, game_state: dict) -> str:
         
     # only random action during normal game, when no bomb is close enough
     elif random.random() < RANDOM_ACTION:
-        if closest_bomb == None:
+        if closest_bomb == None and is_explosion_on_field == False:
             print("random act")
             return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .0, .2])
-        elif dist(agent_pos[0], closest_bomb[0][0], agent_pos[1], closest_bomb[0][1]) >= 4.0:
-            print("random act")
-            return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .0, .2])
-        
+        elif closest_bomb != None:
+            if dist(agent_pos[0], closest_bomb[0][0], agent_pos[1], closest_bomb[0][1]) >= 4.0:
+                print("random act")
+                return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .0, .2])
+
             
                 
 
