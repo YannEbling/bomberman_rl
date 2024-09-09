@@ -43,7 +43,7 @@ def index_of_closest_item(agent_position: tuple, item_positions: List[tuple]):
     return i_min
 
 
-def state_to_index(game_state: dict, coin_index=None, bomb_index=None, dim_reduce=False, include_bombs=False):
+def state_to_index(game_state: dict, coin_index=None, bomb_index=None, dim_reduce=False, include_bombs=False, include_crates=False):
     """
     This function is a bit messy and even if it would work, it would only be applicable for this very simple setup and
     can get very complicated. We should definitely look for a better feature extraction for more complex states.
@@ -127,6 +127,32 @@ def state_to_index(game_state: dict, coin_index=None, bomb_index=None, dim_reduc
 
             index += third_digit * number_of_agent_coin_states
 
+        if include_crates:
+            number_of_bomb_states = int((n - 1) ** 2 - (n / 2 - 1) ** 2) + 1  # this is the total number of valid positions
+            crate_up = int(game_state['field'][agent_position[0], agent_position[0] - 1] == 1)
+            crate_right = int(game_state['field'][agent_position[0] + 1, agent_position[0]] == 1)
+            crate_down = int(game_state['field'][agent_position[0], agent_position[0] + 1] == 1)
+            crate_left = int(game_state['field'][agent_position[0] - 1, agent_position[0]] == 1)
+
+            # check if other agents are nearby (they are treated equal to crates)
+            others_positions = [agent_attributes[-1] for agent_attributes in game_state['others']]  # gather the other
+            # agents positions
+            agent_x, agent_y = agent_position
+            for (others_x, others_y) in others_positions:
+                if others_x == agent_x and others_y + 1 == agent_y:
+                    crate_up = 1
+                elif others_x - 1 == agent_x and others_y == agent_y:
+                    crate_right = 1
+                elif others_x == agent_x and others_y - 1 == agent_y:
+                    crate_down = 1
+                elif others_x + 1 == agent_x and others_y == agent_y:
+                    crate_left = 1
+
+            fourth_digit = crate_up + crate_right * 2 + crate_down * 4 + crate_left * 8  # binary number covering
+            # combinations of crates located right next to the agent
+
+            index += fourth_digit * number_of_agent_coin_states*number_of_bomb_states
+
         return index, permutations
 
     # This is only reached, if there is no dimension reduction.
@@ -149,6 +175,28 @@ def state_to_index(game_state: dict, coin_index=None, bomb_index=None, dim_reduc
         index += third_digit * number_of_tiles*(number_of_tiles+1)  # #number_of_tiles states for the agent and #number_
         # _of_tiles + 1 for the coin
 
+    if include_crates:
+        crate_up = int(game_state['field'][agent_position[0], agent_position[0] - 1] == 1)
+        crate_right = int(game_state['field'][agent_position[0] + 1, agent_position[0]] == 1)
+        crate_down = int(game_state['field'][agent_position[0], agent_position[0] + 1] == 1)
+        crate_left = int(game_state['field'][agent_position[0] - 1, agent_position[0]] == 1)
+
+        # check if other agents are nearby (they are treated equal to crates)
+        others_positions = [agent_attributes[-1] for agent_attributes in game_state['others']]  # gather the other
+        # agents positions
+        agent_x, agent_y = agent_position
+        for (others_x, others_y) in others_positions:
+            if others_x == agent_x and others_y + 1 == agent_y:
+                crate_up = 1
+            elif others_x - 1 == agent_x and others_y == agent_y:
+                crate_right = 1
+            elif others_x == agent_x and others_y - 1 == agent_y:
+                crate_down = 1
+            elif others_x + 1 == agent_x and others_y == agent_y:
+                crate_left = 1
+                
+        fourth_digit = crate_up + crate_right * 2 + crate_down * 4 + crate_left * 8
+        index += fourth_digit * number_of_tiles * (number_of_tiles+1)**2
     return index, permutations
 
 

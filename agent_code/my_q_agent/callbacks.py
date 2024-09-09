@@ -78,7 +78,8 @@ def setup(self):
 
         number_of_bomb_states = int((n - 1) ** 2 - (n / 2 - 1) ** 2) + 1  # this is the total number of valid positions
         # on the board plus one for the case of no bomb on the board
-        nr_states = number_of_agent_states * number_of_bomb_states * number_of_coin_states
+        number_of_crate_states = 2**4
+        nr_states = number_of_agent_states * number_of_bomb_states * number_of_coin_states * number_of_crate_states
         shape = (nr_states, len(ACTIONS))
         self.logger.debug(f"New model has dimensions {shape}")
         self.Q = np.random.random(shape)
