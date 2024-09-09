@@ -25,8 +25,6 @@ import auxiliary_functions as aux
 # SAVE_INTERVAL must match the value for the parameter --n-rounds
 # (Would read this out of args but it somehow doesnt work) 
 #
-SAVE_INTERVAL = 10
-save_counter = 0
 
 
 
@@ -49,7 +47,7 @@ ALPHA = 0.4
 
 
 # Discount factor gamma, 0.0 < gamma < 1.0
-GAMMA = 0.2
+GAMMA = 0.9
 
 
 MyTransition = namedtuple('Transition', ('state', 'action'))
@@ -104,7 +102,7 @@ def setup_training(self):
 
 
 
-    print(id)
+    #print(id)
 
 
 
@@ -318,9 +316,9 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #
     global save_counter
     save_counter = save_counter + 1
-    print(f"save counter: {save_counter}")
+    #print(f"save counter: {save_counter}")
     if save_counter == SAVE_INTERVAL:
-        print("saving data")
+        #print("saving data")
         if os.path.isfile("./mp/mp.hky"):
             with open(f"mp/data/my-saved-model{id}.pt", "wb") as file:
                 pickle.dump(self.Q, file)
@@ -336,7 +334,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #   Execution Time Analysis
     #
     exec_time = time.time() - training_time
-    print(f"Execution time for function \"game_events_occurred\": {exec_time:.6f} seconds")
+    #print(f"Execution time for function \"game_events_occurred\": {exec_time:.6f} seconds")
     self.logger.debug(f"Execution time for function \"game_events_occurred\": {exec_time} seconds")
  
 

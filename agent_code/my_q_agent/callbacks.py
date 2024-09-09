@@ -44,15 +44,15 @@ def setup(self):
     #   For Retraining Existing Model
     #
     if self.train and os.path.isfile("my-saved-model.pt"):
-        print("Continue training model from saved state.")
+        #print("Continue training model from saved state.")
         with open("my-saved-model.pt", "rb") as file:
             self.Q = pickle.load(file)
-            print("TYPE OF LOADED MODEL: ", type(self.Q))
+            #print("TYPE OF LOADED MODEL: ", type(self.Q))
 
     elif self.train or not os.path.isfile("my-saved-model.pt"):
     #if self.train or not os.path.isfile("my-saved-model.pt"):
         self.logger.info("Setting up model from scratch.")
-        print("Setting up model from scratch.")
+        #print("Setting up model from scratch.")
         #weights = np.random.rand(len(ACTIONS))
         #self.model = weights / weights.sum()
         
@@ -85,10 +85,10 @@ def setup(self):
         
     else:
         self.logger.info("Loading model from saved state.")
-        print("Loading model from saved state.")
+        #print("Loading model from saved state.")
         with open("my-saved-model.pt", "rb") as file:
             self.Q = pickle.load(file)
-            print("TYPE OF LOADED MODEL: ", type(self.Q))
+            #print("TYPE OF LOADED MODEL: ", type(self.Q))
 
 
 def act(self, game_state: dict) -> str:
