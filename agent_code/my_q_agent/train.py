@@ -49,7 +49,7 @@ ALPHA = 0.4
 
 
 # Discount factor gamma, 0.0 < gamma < 1.0
-GAMMA = 0.2
+GAMMA = 0.7
 
 
 MyTransition = namedtuple('Transition', ('state', 'action'))
@@ -163,8 +163,9 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #   Compute Action Index of old_game_state
     old_action_index = action_to_index[self_action]
     
-    
-
+    self.logger.debug(f"Agent pos old: {old_agent_pos}")
+    self.logger.debug(f"old_closest_bomb: {old_closest_bomb}")
+    self.logger.debug(f"old_closest_crate {old_closest_crate}")
     
     #
     #
@@ -198,7 +199,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
     for event in events:
         if event == e.BOMB_DROPPED:             
-            dist_to_crate = math.sqrt(pow((new_closest_crate[0] - new_agent_pos[0]), 2) + pow((new_closest_crate[1] - new_agent_pos[1]), 2))
+            dist_to_crate = math.sqrt(pow((old_closest_crate[0] - old_agent_pos[0]), 2) + pow((old_closest_crate[1] - old_agent_pos[1]), 2))
             if dist_to_crate <= 1.01:
                 events.append(e.BOMB_DROPPED_NEXT_TO_CRATE)
                 print("BOMB_DROPPED_NEXT_TO_CRATE")
@@ -331,11 +332,11 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
     
     
-    print(f"old_agent_pos: {old_agent_pos}")
-    print(f"new_agent_pos: {new_agent_pos}")
-    print(f"old_state_index: {old_state_index}")
-    print(f"new_state_index: {new_state_index}")
-    print(f"self_action: {self_action}")
+    #print(f"old_agent_pos: {old_agent_pos}")
+    #print(f"new_agent_pos: {new_agent_pos}")
+    #print(f"old_state_index: {old_state_index}")
+    #print(f"new_state_index: {new_state_index}")
+    #print(f"self_action: {self_action}")
 
 
 
@@ -517,7 +518,7 @@ def reward_from_events(self, events: List[str]) -> int:
     game_rewards = {
         #e.COIN_COLLECTED: 2,
         #e.WAITED: -0.2,
-        e.INVALID_ACTION: -0.1,
+        e.INVALID_ACTION: -0.3,
         #e.MOVED_RIGHT: -0.1,
         #e.MOVED_UP: -0.1,
         #e.MOVED_DOWN: -0.1,
