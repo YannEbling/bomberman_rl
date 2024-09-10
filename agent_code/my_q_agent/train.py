@@ -194,7 +194,21 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                                          bomb_index=new_possible_closest_bomb_index,
                                          dim_reduce=True,
                                          include_bombs=True)[0]
-    
+
+    # Add custom event: walking into or out of bomb explosion radius (in or out danger)
+    old_in_danger = in_danger(agent_position=old_agent_pos,
+                              bombs=old_game_state['bombs'],
+                              bomb_index=old_possible_closest_bomb_index)
+    new_in_danger = in_danger(agent_position=new_agent_pos,
+                              bombs=new_game_state['bombs'],
+                              bomb_index=new_possible_closest_bomb_index)
+
+    if old_in_danger and not new_in_danger:
+        events.append("OUT_DANGER")
+
+    if not old_in_danger and new_in_danger:
+        events.append("IN_DANGER")
+
 
     #
     #   Update Q-value of state-action tupel
@@ -419,8 +433,12 @@ def reward_from_events(self, events: List[str]) -> int:
         e.MOVED_RIGHT: -0.2,
         e.MOVED_UP: -0.2,
         e.MOVED_DOWN: -0.2,
-        e.MOVED_LEFT: -0.2
+        e.MOVED_LEFT: -0.2,
         #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
+        "IN_DANGER": -5,
+        "OUT_DANGER": 3,
+        e.KILLED_SELF: -20,
+        e.GOT_KILLED: -20
     }
     reward_sum = 0
     for event in events:
@@ -428,3 +446,23 @@ def reward_from_events(self, events: List[str]) -> int:
             reward_sum += game_rewards[event]
     self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
     return reward_sum
+
+
+def in_danger(agent_position: tuple, bombs: list[tuple], bomb_index: any) -> bool:
+    if bomb_index is None:
+        return False
+
+    agent_x, agent_y = agent_position
+    bomb_x, bomb_y = bombs[bomb_index][0]
+    if bomb_x % 2 != 0 and bomb_y % 2 != 0:
+        if agent_x == bomb_x and abs(agent_y - bomb_y) < 4:
+            return True
+        elif agent_y == bomb_y and abs(agent_x - bomb_x) < 4:
+            return True
+    elif bomb_x % 2 == 0 and bomb_y % 2 != 0:
+        if agent_y == bomb_y and abs(agent_x - bomb_x) < 4:
+            return True
+    elif bomb_x % 2 != 0 and bomb_y % 2 == 0:
+        if agent_x == bomb_x and abs(agent_y - bomb_y) < 4:
+            return True
+    return False
