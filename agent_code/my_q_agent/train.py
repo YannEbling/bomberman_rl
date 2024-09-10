@@ -6,6 +6,9 @@ from typing import List
 import events as e
 from .callbacks import state_to_features
 from .callbacks import find_closest_coin
+from .callbacks import find_closest_crate
+
+import math
 
 import numpy as np
 from main import *
@@ -60,7 +63,8 @@ action_to_index = {
     "RIGHT": 1,
     "DOWN": 2,
     "LEFT": 3,
-    "WAIT": 4
+    "WAIT": 4,
+    "BOMB": 5
 }
 
 # For training debugging
@@ -208,6 +212,29 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
     if not old_in_danger and new_in_danger:
         events.append("IN_DANGER")
+
+
+
+
+    #
+    #   Custom Event: Bomb placed directly at crate?
+    #
+
+    old_possible_closest_crate = find_closest_crate(old_game_state)
+    self.logger.debug(f"crate: {old_possible_closest_crate}")
+    if old_possible_closest_crate is not None:
+        for event in events:
+            if event == e.BOMB_DROPPED:
+                dist_to_crate = math.sqrt(pow((old_possible_closest_crate[0] - old_agent_pos[0]), 2) + pow((old_possible_closest_crate[1] - old_agent_pos[1]), 2))
+                if dist_to_crate <= 1.01:
+                    events.append(e.BOMB_DROPPED_NEXT_TO_CRATE)
+                    self.logger.debug("BOMB_DROPPED_NEXT_TO_CRATE")
+                else:
+                    events.append(e.BOMB_DROPPED_AWAY_FROM_CRATE)
+                    self.logger.debug("BOMB_DROPPED_AWAY_FROM_CRATE")
+
+
+
 
 
     #
@@ -438,7 +465,9 @@ def reward_from_events(self, events: List[str]) -> int:
         "IN_DANGER": -5,
         "OUT_DANGER": 3,
         e.KILLED_SELF: -20,
-        e.GOT_KILLED: -20
+        e.GOT_KILLED: -20,
+        e.BOMB_DROPPED_NEXT_TO_CRATE: 0.8,  # no guarantee, that the reward is sufficient
+        e.BOMB_DROPPED_AWAY_FROM_CRATE: -0.8
     }
     reward_sum = 0
     for event in events:

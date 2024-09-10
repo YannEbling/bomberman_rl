@@ -10,8 +10,8 @@ from settings import *
 from main import *
 import auxiliary_functions as aux
 
-#ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
-ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
+ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
+#ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
 
 cols = (COLS - 2)
 cells = pow((COLS - 2), 2)
@@ -19,6 +19,8 @@ n = COLS - 1
 assert COLS == ROWS
 
 RANDOM_ACTION = .15
+
+custom_bomb_state = []
 
 def setup(self):
     """
@@ -109,7 +111,8 @@ def act(self, game_state: dict) -> str:
     #    self.logger.debug(f"Q {self.Q[i]}")
     
     
-    
+    # update custom bomb state tracker
+    update_custom_bomb_state(game_state)
     
     
     
@@ -117,8 +120,8 @@ def act(self, game_state: dict) -> str:
     #if self.train and random.random() < RANDOM_ACTION:
     if random.random() < RANDOM_ACTION:
         self.logger.debug("Choosing action purely at random.")
-        #return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
-        return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
+        return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
+        #return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
 
     self.logger.debug("Querying model for action.")
     
@@ -158,10 +161,63 @@ def act(self, game_state: dict) -> str:
     self.logger.debug(f"Q[{index}]: {actions}")
     self.logger.debug(f"Argmax-action of row is {permuted_action}")
     self.logger.debug(f"Action chosen after reverting permutations {permutations}: {action_chosen}")
+
+
    
     #---
     return action_chosen
 
+def update_custom_bomb_state(game_state):
+
+    global custom_bomb_state
+
+    # update timer
+    updated_bombs = []
+    for i in range(len(custom_bomb_state)):
+        bomb = custom_bomb_state[i]
+        new_bomb = ((bomb[0][0], bomb[0][1]), bomb[1] - 1)
+        updated_bombs.append(new_bomb)
+
+    custom_bomb_state.clear()
+    for i in range(len(updated_bombs)):
+        bomb = updated_bombs[i]
+        custom_bomb_state.append(bomb)
+
+    updated_bombs.clear()
+
+    # add new to list
+    new_bombs = []
+    for i in range(len(game_state['bombs'])):
+        bomb = game_state['bombs'][i]
+        isIn = False
+        for j in range(len(custom_bomb_state)):
+            custom_bomb = custom_bomb_state[j]
+            if bomb[0] == custom_bomb[0]:
+                isIn = True
+                break
+
+        if not isIn:
+            new_bombs.append(bomb)
+
+    for i in range(len(new_bombs)):
+        bomb = new_bombs[i]
+        custom_bomb_state.append(bomb)
+
+    new_bombs.clear()
+
+    # remove old ones
+    remove_bombs = []
+    for i in range(len(custom_bomb_state)):
+        bomb = custom_bomb_state[i]
+        if bomb[1] <= -2:
+            remove_bombs.append(bomb)
+
+    for i in range(len(remove_bombs)):
+        bomb = remove_bombs[i]
+        # recheck this part
+        custom_bomb_state.remove(bomb)
+
+    remove_bombs.clear()
 
 def find_closest_coin(game_state: dict):
     coins = game_state["coins"]
@@ -171,7 +227,7 @@ def find_closest_coin(game_state: dict):
         return None
         
     closest_coin = coins[0]
-    closest_coin_dist = 1.7976931348623157e+308 # max float value
+    closest_coin_dist = 1.797e+308 # max float value
     for i in range(len(coins)):
         coin_pos = coins[i]
         agent_pos = agent[3]
@@ -182,7 +238,24 @@ def find_closest_coin(game_state: dict):
     
     return closest_coin
 
+def find_closest_crate(game_state: dict):
+    field = game_state["field"]
+    agent = game_state["self"]
+    field_shape = field.shape
 
+    closest_crate = None
+    closest_crate_dist = 1.797e+308 # max float value
+    for x in range(field_shape[0]):
+        for y in range(field_shape[1]):
+            tile = field[x][y]
+            if tile == 1: # 1 = crate
+                agent_pos = agent[3]
+                euclid_dist = math.sqrt(pow((x - agent_pos[0]), 2) + pow((y - agent_pos[1]), 2))
+                if euclid_dist < closest_crate_dist:
+                    closest_crate = (x, y)
+                    closest_crate_dist = euclid_dist
+
+    return closest_crate
 
 def state_to_features(game_state: dict) -> np.array:
     """

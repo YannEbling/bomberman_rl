@@ -232,3 +232,29 @@ def apply_permutations(action, permutations):
     """
     reversed_permutations = [permutations[len(permutations)-i-1] for i in range(len(permutations))]
     return revert_permutations(action, reversed_permutations)
+
+def get_all_explosions(game_state):
+    explosion_map = game_state['explosion_map']
+
+    # no explosion currently on the map
+    if np.sum(explosion_map) == 0.0:
+        return []
+
+    explosions = []
+    for x in range(len(explosion_map)):
+        for y in range(len(explosion_map)):
+            tile = explosion_map[x][y]
+            if tile == 1:
+                explosions.append((x, y))
+
+    return explosions
+
+def in_danger(game_state):
+    # todo
+    pass
+
+
+
+
+
+
