@@ -119,11 +119,11 @@ def act(self, game_state: dict) -> str:
     # todo Exploration vs exploitation
     #if self.train and random.random() < RANDOM_ACTION:
     if random.random() < RANDOM_ACTION:
-        self.logger.debug("Choosing action purely at random.")
+        #self.logger.debug("Choosing action purely at random.")
         return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
         #return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
 
-    self.logger.debug("Querying model for action.")
+    #self.logger.debug("Querying model for action.")
     
 
     
@@ -134,7 +134,7 @@ def act(self, game_state: dict) -> str:
 
     agent_pos = game_state["self"][3]
     coin_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=game_state['coins'])
-    bomb_positions = [bomb_attributes[0] for bomb_attributes in game_state['bombs']]
+    bomb_positions = [bomb_attributes[0] for bomb_attributes in custom_bomb_state]
     bomb_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=bomb_positions)
     index, permutations = aux.state_to_index(game_state, coin_index=coin_index, bomb_index=bomb_index,
                                              dim_reduce=True, include_bombs=True)
@@ -158,9 +158,9 @@ def act(self, game_state: dict) -> str:
     #final_decision = np.argmax(actions)
     #action_chosen = ACTIONS[final_decision]
 
-    self.logger.debug(f"Q[{index}]: {actions}")
-    self.logger.debug(f"Argmax-action of row is {permuted_action}")
-    self.logger.debug(f"Action chosen after reverting permutations {permutations}: {action_chosen}")
+    #self.logger.debug(f"Q[{index}]: {actions}")
+    #self.logger.debug(f"Argmax-action of row is {permuted_action}")
+    #self.logger.debug(f"Action chosen after reverting permutations {permutations}: {action_chosen}")
 
 
    

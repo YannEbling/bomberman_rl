@@ -7,6 +7,7 @@ import events as e
 from .callbacks import state_to_features
 from .callbacks import find_closest_coin
 from .callbacks import find_closest_crate
+from .callbacks import custom_bomb_state
 
 import math
 
@@ -142,7 +143,15 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     :param new_game_state: The state the agent is in now.
     :param events: The events that occurred when going from  `old_game_state` to `new_game_state`
     """
-    self.logger.debug(f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}')
+    
+    
+    
+    
+    
+ 
+    
+
+    #self.logger.debug(f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}')
 
     # state_to_features is defined in callbacks.py
     self.transitions.append(Transition(state_to_features(old_game_state), self_action,
@@ -157,7 +166,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     
     # Coin and bomb position
     old_possible_closest_coin_index = aux.index_of_closest_item(old_agent_pos, old_game_state['coins'])
-    old_possible_closest_bomb_index = aux.index_of_closest_item(old_agent_pos, [old_game_state['bombs'][k][0] for k in
+    old_possible_closest_bomb_index = aux.index_of_closest_item(old_agent_pos, [custom_bomb_state[k][0] for k in
                                                                                 range(len(old_game_state['bombs']))])
 
         
@@ -186,8 +195,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     
     # Coin and bomb position
     new_possible_closest_coin_index = aux.index_of_closest_item(new_agent_pos, new_game_state['coins'])
-    new_possible_closest_bomb_index = aux.index_of_closest_item(new_agent_pos, [new_game_state['bombs'][k][0] for k in
-                                                                                range(len(new_game_state['bombs']))])
+    new_possible_closest_bomb_index = aux.index_of_closest_item(new_agent_pos, [custom_bomb_state[k][0] for k in
+                                                                                range(len(custom_bomb_state))])
     
     #if new_possible_closest_coin_index is None:
         #print("Couldn't find a coin")
@@ -201,10 +210,10 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
     # Add custom event: walking into or out of bomb explosion radius (in or out danger)
     old_in_danger = in_danger(agent_position=old_agent_pos,
-                              bombs=old_game_state['bombs'],
+                              bombs=custom_bomb_state,
                               bomb_index=old_possible_closest_bomb_index)
     new_in_danger = in_danger(agent_position=new_agent_pos,
-                              bombs=new_game_state['bombs'],
+                              bombs=custom_bomb_state,
                               bomb_index=new_possible_closest_bomb_index)
 
     if old_in_danger and not new_in_danger:
@@ -249,69 +258,24 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #factor2 = ALPHA * reward
     #factor3 = ALPHA * GAMMA * np.argmax( self.Q[new_state_index] )
     
-    self.logger.debug(f"np.argmax: {np.argmax(self.Q[new_state_index])}")
-    self.logger.debug(f"np.argmax value: {self.Q[new_state_index][argmax]}")
+    #self.logger.debug(f"np.argmax: {np.argmax(self.Q[new_state_index])}")
+    #self.logger.debug(f"np.argmax value: {self.Q[new_state_index][argmax]}")
     
-    self.logger.debug(f"factor1 :{factor1}")
-    self.logger.debug(f"factor2 :{factor2}")
-    self.logger.debug(f"factor3 :{factor3}")
+    #self.logger.debug(f"factor1 :{factor1}")
+    #self.logger.debug(f"factor2 :{factor2}")
+    #self.logger.debug(f"factor3 :{factor3}")
     
-    self.logger.debug(f"old q value before update: {self.Q[old_state_index][old_action_index]}")
+    #self.logger.debug(f"old q value before update: {self.Q[old_state_index][old_action_index]}")
     new_value = factor1 + factor3
-    self.logger.debug(f"new q value: {new_value}")
-    self.logger.debug(f"reward: {reward}")
+    #self.logger.debug(f"new q value: {new_value}")
+    #self.logger.debug(f"reward: {reward}")
     
     # set new value
-    self.Q[old_state_index][old_action_index] = new_value
+    #self.Q[old_state_index][old_action_index] = new_value
 
-    self.logger.debug(f"new q value before update: {self.Q[old_state_index][old_action_index]}")
+    #self.logger.debug(f"new q value before update: {self.Q[old_state_index][old_action_index]}")
 
-    # to speed up training, a virtual bomb is placed for every valid position. Then, the rewards that the chosen action
-    # would have resulted in are recorded and the Q matrix is updated.
-    for bomb_position in VALID_POSITIONS:
-        old_virtual_state = {
-                            'field': old_game_state['field'],
-                            'self': old_game_state['self'],
-                            'others': old_game_state['others'],
-                            'bombs': [[bomb_position]],
-                            'coins': old_game_state['coins']
-                            }
 
-        new_virtual_state = {
-                            'field': new_game_state['field'],
-                            'self': new_game_state['self'],
-                            'others': new_game_state['others'],
-                            'bombs': [[bomb_position]],
-                            'coins': new_game_state['coins']
-                            }
-
-        old_state_index = aux.state_to_index(old_virtual_state,
-                                             coin_index=old_possible_closest_coin_index,
-                                             bomb_index=0,
-                                             dim_reduce=True,
-                                             include_bombs=True,
-                                             include_crates=True)[0]
-
-        new_state_index = aux.state_to_index(game_state=new_virtual_state,
-                                             coin_index=new_possible_closest_coin_index,
-                                             bomb_index=0,
-                                             dim_reduce=True,
-                                             include_bombs=True,
-                                             include_crates=True)[0]
-
-        #
-        #   Update Q-value of state-action tupel
-        #
-        reward = reward_from_events(self, events)
-        argmax = np.argmax(self.Q[new_state_index])
-
-        factor1 = (1.0 - ALPHA) * self.Q[old_state_index][old_action_index]
-        factor2 = GAMMA * self.Q[new_state_index][argmax]
-        factor3 = ALPHA * (reward + factor2)
-
-        new_value = factor1 + factor3
-
-        self.Q[old_state_index][old_action_index] = new_value
    
     
     #---
@@ -331,7 +295,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     :param self: The same object that is passed to all of your callbacks.
     """
 
-    training_time = time.time()
+    #training_time = time.time()
 
 
     #
@@ -400,12 +364,12 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
     global round
     round = round + 1
-    self.logger.debug(f"Round nr: {round}")
+    #self.logger.debug(f"Round nr: {round}")
 
 
 
 
-    self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
+    #self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
     self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
 
     #
@@ -430,9 +394,9 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #
     #   Execution Time Analysis
     #
-    exec_time = time.time() - training_time
+    #exec_time = time.time() - training_time
     #print(f"Execution time for function \"game_events_occurred\": {exec_time:.6f} seconds")
-    self.logger.debug(f"Execution time for function \"game_events_occurred\": {exec_time} seconds")
+    #self.logger.debug(f"Execution time for function \"game_events_occurred\": {exec_time} seconds")
  
 
 def training_end():
@@ -473,7 +437,7 @@ def reward_from_events(self, events: List[str]) -> int:
     for event in events:
         if event in game_rewards:
             reward_sum += game_rewards[event]
-    self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
+    #self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
     return reward_sum
 
 
