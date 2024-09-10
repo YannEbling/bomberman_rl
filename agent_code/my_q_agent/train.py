@@ -211,7 +211,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         events.append("OUT_DANGER")
 
     if not old_in_danger and new_in_danger:
-        events.append("IN_DANGER")
+        if self_action != 'BOMB':
+            events.append("IN_DANGER")
 
 
 

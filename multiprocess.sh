@@ -16,6 +16,7 @@ eval "touch ./agent_code/$dir/mp/mp.hky"
 
 for ((i=0; i<n; i++))
 do
+    echo "Starting intervall #$i."
     for ((j=1; j<=m; j++))
     do
         echo "Run #$j:"
