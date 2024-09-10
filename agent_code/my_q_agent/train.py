@@ -466,8 +466,8 @@ def reward_from_events(self, events: List[str]) -> int:
         "OUT_DANGER": 3,
         e.KILLED_SELF: -20,
         e.GOT_KILLED: -20,
-        e.BOMB_DROPPED_NEXT_TO_CRATE: 0.8,  # no guarantee, that the reward is sufficient
-        e.BOMB_DROPPED_AWAY_FROM_CRATE: -0.8
+        e.BOMB_DROPPED_NEXT_TO_CRATE: 3,  # no guarantee, that the reward is sufficient
+        e.BOMB_DROPPED_AWAY_FROM_CRATE: -4
     }
     reward_sum = 0
     for event in events:
