@@ -137,7 +137,7 @@ def act(self, game_state: dict) -> str:
     bomb_positions = [bomb_attributes[0] for bomb_attributes in game_state['bombs']]
     bomb_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=bomb_positions)
     index, permutations = aux.state_to_index(game_state, coin_index=coin_index, bomb_index=bomb_index,
-                                             dim_reduce=True, include_bombs=True)
+                                             dim_reduce=True, include_bombs=True, include_crates=True)
     action_index = np.argmax(self.Q[index])
     permuted_action = ACTIONS[action_index]
     action_chosen = aux.revert_permutations(permuted_action, permutations)

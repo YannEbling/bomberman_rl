@@ -166,7 +166,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                                                        coin_index=old_possible_closest_coin_index,
                                                        bomb_index=old_possible_closest_bomb_index,
                                                        dim_reduce=True,
-                                                       include_bombs=True)
+                                                       include_bombs=True,
+                                                       include_crates=True)
     
     permuted_old_action = aux.apply_permutations(self_action, permutations)
     
@@ -197,7 +198,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                                          coin_index=new_possible_closest_coin_index,
                                          bomb_index=new_possible_closest_bomb_index,
                                          dim_reduce=True,
-                                         include_bombs=True)[0]
+                                         include_bombs=True,
+                                         include_crates=True)[0]
 
     # Add custom event: walking into or out of bomb explosion radius (in or out danger)
     old_in_danger = in_danger(agent_position=old_agent_pos,
@@ -361,7 +363,8 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
                                                         coin_index=possible_closest_coin_index,
                                                         bomb_index=possible_closest_bomb_index,
                                                         dim_reduce=True,
-                                                        include_bombs=True)
+                                                        include_bombs=True,
+                                                        include_crates=True)
 
     permuted_last_action = aux.apply_permutations(last_action, permutations)
     last_action_index = action_to_index[permuted_last_action]
@@ -465,8 +468,8 @@ def reward_from_events(self, events: List[str]) -> int:
         #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
         "IN_DANGER": -5,
         "OUT_DANGER": 3,
-        e.KILLED_SELF: -20,
-        e.GOT_KILLED: -20,
+        e.KILLED_SELF: 0,#-20,
+        e.GOT_KILLED: 0,#-20,
         e.BOMB_DROPPED_NEXT_TO_CRATE: 3,  # no guarantee, that the reward is sufficient
         e.BOMB_DROPPED_AWAY_FROM_CRATE: -4
     }
