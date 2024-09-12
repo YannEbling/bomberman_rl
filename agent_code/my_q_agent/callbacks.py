@@ -111,6 +111,10 @@ def act(self, game_state: dict) -> str:
     #    self.logger.debug(f"Q {self.Q[i]}")
     
     
+    self.logger.debug("")
+    self.logger.debug("")
+    self.logger.debug("")
+
     # update custom bomb state tracker
     update_custom_bomb_state(game_state)
     
@@ -119,11 +123,11 @@ def act(self, game_state: dict) -> str:
     # todo Exploration vs exploitation
     #if self.train and random.random() < RANDOM_ACTION:
     if random.random() < RANDOM_ACTION:
-        #self.logger.debug("Choosing action purely at random.")
+        self.logger.debug("CB: Choosing action purely at random.")
         return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
         #return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
 
-    #self.logger.debug("Querying model for action.")
+    self.logger.debug("CB: Querying model for action.")
     
 
     
@@ -134,10 +138,15 @@ def act(self, game_state: dict) -> str:
 
     agent_pos = game_state["self"][3]
     coin_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=game_state['coins'])
+
+    closest_enemy_index = aux.index_of_closest_item(agent_pos, [game_state["others"][k][3] for k in range(len(game_state["others"]))])
+    if coin_index == None:
+        coin_index = closest_enemy_index
+
     bomb_positions = [bomb_attributes[0] for bomb_attributes in custom_bomb_state]
     bomb_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=bomb_positions)
-    index, permutations = aux.state_to_index(game_state, coin_index=coin_index, bomb_index=bomb_index,
-                                             dim_reduce=True, include_bombs=True)
+    index, permutations = aux.state_to_index(game_state, custom_bomb_state, coin_index=coin_index, bomb_index=bomb_index,
+                                             dim_reduce=True, include_bombs=True, include_crates=True)
     action_index = np.argmax(self.Q[index])
     permuted_action = ACTIONS[action_index]
     action_chosen = aux.revert_permutations(permuted_action, permutations)
@@ -154,13 +163,13 @@ def act(self, game_state: dict) -> str:
     
     # 0 <= final_index <= 2400
     #final_index = agent_pos_index * (cells - 1) + coin_pos_index - 1
-    actions = self.Q[action_index]
+    actions = self.Q[index]
     #final_decision = np.argmax(actions)
     #action_chosen = ACTIONS[final_decision]
 
-    #self.logger.debug(f"Q[{index}]: {actions}")
-    #self.logger.debug(f"Argmax-action of row is {permuted_action}")
-    #self.logger.debug(f"Action chosen after reverting permutations {permutations}: {action_chosen}")
+    self.logger.debug(f"CB: Q[{index}]: {actions}")
+    self.logger.debug(f"CB: Argmax-action of row is {permuted_action}")
+    self.logger.debug(f"CB: Action chosen after reverting permutations {permutations}: {action_chosen}")
 
 
    

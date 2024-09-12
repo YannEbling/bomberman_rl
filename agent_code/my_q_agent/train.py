@@ -51,7 +51,7 @@ ALPHA = 0.4
 
 
 # Discount factor gamma, 0.0 < gamma < 1.0
-GAMMA = 0.9
+GAMMA = 0.7
 
 
 MyTransition = namedtuple('Transition', ('state', 'action'))
@@ -81,7 +81,7 @@ cells = pow((COLS - 2), 2)
 # Execution Time Analysis
 
 # Saving data every round is costly, save only every n rounds
-SAVE_INTERVAL = 100
+SAVE_INTERVAL = 1000
 save_counter = 0
 
 # This function and the VALID_POSITIONS are necessary to perform the sped up training, looping over all possible
@@ -97,6 +97,8 @@ N = cols+1
 DOMAIN = np.arange(0, 17)
 VALID_POSITIONS = [(i, j) for i in DOMAIN for j in DOMAIN if condition(i, j, N)] + [(0, 0)]
 
+
+round_in_game = 0
 
 def setup_training(self):
     """
@@ -145,17 +147,17 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     """
     
     
-    
-    
-    
- 
+    global round_in_game
+    round_in_game = round_in_game + 1
+    self.logger.debug(f"TR: round: {round_in_game}")
+
     
 
     #self.logger.debug(f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}')
 
     # state_to_features is defined in callbacks.py
-    self.transitions.append(Transition(state_to_features(old_game_state), self_action,
-                                       state_to_features(new_game_state), reward_from_events(self, events)))
+    #self.transitions.append(Transition(state_to_features(old_game_state), self_action,
+    #                                   state_to_features(new_game_state), reward_from_events(self, events)))
     
     #---
     
@@ -163,19 +165,28 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #   Compute State Index of old_game_state
     #
     old_agent_pos = old_game_state["self"][3]
-    
+
+
+
+
     # Coin and bomb position
     old_possible_closest_coin_index = aux.index_of_closest_item(old_agent_pos, old_game_state['coins'])
     old_possible_closest_bomb_index = aux.index_of_closest_item(old_agent_pos, [custom_bomb_state[k][0] for k in
-                                                                                range(len(old_game_state['bombs']))])
+                                                                                range(len(custom_bomb_state))])
+
+    old_closest_enemy_index = aux.index_of_closest_item(old_agent_pos, [old_game_state["others"][k][3] for k in range(len(old_game_state["others"]))])
+    if old_possible_closest_coin_index == None:
+        old_possible_closest_coin_index = old_closest_enemy_index
 
         
     # 0 <= state_index < 790.128
     old_state_index, permutations = aux.state_to_index(game_state=old_game_state,
+                                                       custom_bomb_state=custom_bomb_state,
                                                        coin_index=old_possible_closest_coin_index,
                                                        bomb_index=old_possible_closest_bomb_index,
                                                        dim_reduce=True,
-                                                       include_bombs=True)
+                                                       include_bombs=True,
+                                                       include_crates=True)
     
     permuted_old_action = aux.apply_permutations(self_action, permutations)
     
@@ -183,7 +194,10 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #   Compute Action Index of old_game_state
     #
     old_action_index = action_to_index[permuted_old_action]
-
+    self.logger.debug(f"TR: old training")
+    self.logger.debug(f"TR: Q[{old_state_index}]: {self.Q[old_state_index]}")
+    self.logger.debug(f"TR: self_action: {self_action}")
+    self.logger.debug(f"TR: Action chosen after reverting permutations {permutations}: {permuted_old_action}")
 
 
 
@@ -193,20 +207,27 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
     new_agent_pos = new_game_state["self"][3]
     
+
+
     # Coin and bomb position
     new_possible_closest_coin_index = aux.index_of_closest_item(new_agent_pos, new_game_state['coins'])
     new_possible_closest_bomb_index = aux.index_of_closest_item(new_agent_pos, [custom_bomb_state[k][0] for k in
                                                                                 range(len(custom_bomb_state))])
     
-    #if new_possible_closest_coin_index is None:
-        #print("Couldn't find a coin")
+
+    new_closest_enemy_index = aux.index_of_closest_item(new_agent_pos, [new_game_state["others"][k][3] for k in range(len(new_game_state["others"]))])
+    if new_possible_closest_coin_index == None:
+        new_possible_closest_coin_index = new_closest_enemy_index
     
     # 0 <= state_index <= 790.128
     new_state_index = aux.state_to_index(game_state=new_game_state,
+                                         custom_bomb_state=custom_bomb_state,
                                          coin_index=new_possible_closest_coin_index,
                                          bomb_index=new_possible_closest_bomb_index,
                                          dim_reduce=True,
-                                         include_bombs=True)[0]
+                                         include_bombs=True,
+                                         include_crates=True
+                                         )[0]
 
     # Add custom event: walking into or out of bomb explosion radius (in or out danger)
     old_in_danger = in_danger(agent_position=old_agent_pos,
@@ -220,7 +241,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         events.append("OUT_DANGER")
 
     if not old_in_danger and new_in_danger:
-        events.append("IN_DANGER")
+        if self_action != 'BOMB':
+            events.append("IN_DANGER")
 
 
 
@@ -230,17 +252,18 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #
 
     old_possible_closest_crate = find_closest_crate(old_game_state)
-    self.logger.debug(f"crate: {old_possible_closest_crate}")
+    self.logger.debug(f"TR: old crate pos: {old_possible_closest_crate}")
+    self.logger.debug(f"TR: old agent pos: {old_agent_pos}")
     if old_possible_closest_crate is not None:
         for event in events:
             if event == e.BOMB_DROPPED:
                 dist_to_crate = math.sqrt(pow((old_possible_closest_crate[0] - old_agent_pos[0]), 2) + pow((old_possible_closest_crate[1] - old_agent_pos[1]), 2))
                 if dist_to_crate <= 1.01:
                     events.append(e.BOMB_DROPPED_NEXT_TO_CRATE)
-                    self.logger.debug("BOMB_DROPPED_NEXT_TO_CRATE")
+                    self.logger.debug("TR: BOMB_DROPPED_NEXT_TO_CRATE")
                 else:
                     events.append(e.BOMB_DROPPED_AWAY_FROM_CRATE)
-                    self.logger.debug("BOMB_DROPPED_AWAY_FROM_CRATE")
+                    self.logger.debug("TR: BOMB_DROPPED_AWAY_FROM_CRATE")
 
 
 
@@ -257,23 +280,72 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     factor3 = ALPHA * ( reward + factor2 )
     #factor2 = ALPHA * reward
     #factor3 = ALPHA * GAMMA * np.argmax( self.Q[new_state_index] )
-    
+    new_value = factor1 + factor3
+
     #self.logger.debug(f"np.argmax: {np.argmax(self.Q[new_state_index])}")
     #self.logger.debug(f"np.argmax value: {self.Q[new_state_index][argmax]}")
-    
+
     #self.logger.debug(f"factor1 :{factor1}")
     #self.logger.debug(f"factor2 :{factor2}")
     #self.logger.debug(f"factor3 :{factor3}")
-    
+
     #self.logger.debug(f"old q value before update: {self.Q[old_state_index][old_action_index]}")
-    new_value = factor1 + factor3
     #self.logger.debug(f"new q value: {new_value}")
-    #self.logger.debug(f"reward: {reward}")
+    self.logger.debug(f"TR: reward: {reward}")
     
     # set new value
-    #self.Q[old_state_index][old_action_index] = new_value
+    self.Q[old_state_index][old_action_index] = new_value
 
-    #self.logger.debug(f"new q value before update: {self.Q[old_state_index][old_action_index]}")
+    self.logger.debug(f"TR: new q after update: {self.Q[old_state_index]}")
+
+ # to speed up training, a virtual bomb is placed for every valid position. Then, the rewards that the chosen action
+    # would have resulted in are recorded and the Q matrix is updated.
+    #for bomb_position in VALID_POSITIONS:
+    #    old_virtual_state = {
+    #                        'field': old_game_state['field'],
+    #                        'self': old_game_state['self'],
+    #                        'others': old_game_state['others'],
+    #                        'bombs': [[bomb_position]],
+    #                        'coins': old_game_state['coins']
+    #                        }
+
+    #    new_virtual_state = {
+    #                        'field': new_game_state['field'],
+    #                        'self': new_game_state['self'],
+    #                        'others': new_game_state['others'],
+    #                        'bombs': [[bomb_position]],
+    #                        'coins': new_game_state['coins']
+    #                        }
+
+    #    old_state_index = aux.state_to_index(old_virtual_state,
+    #                                         custom_bomb_state=custom_bomb_state,
+    #                                         coin_index=old_possible_closest_coin_index,
+    #                                         bomb_index=0,
+    #                                         dim_reduce=True,
+    #                                         include_bombs=True,
+    #                                         include_crates=True)[0]
+
+    #    new_state_index = aux.state_to_index(game_state=new_virtual_state,
+    #                                         custom_bomb_state=custom_bomb_state,
+    #                                         coin_index=new_possible_closest_coin_index,
+    #                                         bomb_index=0,
+    #                                         dim_reduce=True,
+    #                                         include_bombs=True,
+    #                                         include_crates=True)[0]
+
+        #
+        #   Update Q-value of state-action tupel
+        #
+    #    reward = reward_from_events(self, events)
+    #    argmax = np.argmax(self.Q[new_state_index])#
+
+    #    factor1 = (1.0 - ALPHA) * self.Q[old_state_index][old_action_index]
+    #    factor2 = GAMMA * self.Q[new_state_index][argmax]
+    #    factor3 = ALPHA * (reward + factor2)
+
+    #    new_value = factor1 + factor3
+
+    #    self.Q[old_state_index][old_action_index] = new_value
 
 
    
@@ -297,6 +369,9 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
     #training_time = time.time()
 
+    global round_in_game
+    round_in_game = round_in_game  + 1
+    self.logger.debug(f"TR: round: {round_in_game}")
 
     #
     #   Compute State Index of new_game_state
@@ -306,8 +381,13 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
     # Coin and bomb position
     possible_closest_coin_index = aux.index_of_closest_item(last_agent_pos, last_game_state['coins'])
-    possible_closest_bomb_index = aux.index_of_closest_item(last_agent_pos, [last_game_state['bombs'][k][0] for k in
-                                                                             range(len(last_game_state['bombs']))])
+    possible_closest_bomb_index = aux.index_of_closest_item(last_agent_pos, [custom_bomb_state[k][0] for k in
+                                                                             range(len(custom_bomb_state))])
+
+
+    last_closest_enemy_index = aux.index_of_closest_item(last_agent_pos, [last_game_state["others"][k][3] for k in range(len(last_game_state["others"]))])
+    if possible_closest_coin_index == None:
+        possible_closest_coin_index = last_closest_enemy_index
     
     #if len(last_game_state["coins"]) > 0:
     #    last_coin_pos   = last_game_state["coins"][0]
@@ -321,10 +401,12 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     
     # 0 <= state_index < 790.128
     last_state_index, permutations = aux.state_to_index(game_state=last_game_state,
+                                                        custom_bomb_state=custom_bomb_state,
                                                         coin_index=possible_closest_coin_index,
                                                         bomb_index=possible_closest_bomb_index,
                                                         dim_reduce=True,
-                                                        include_bombs=True)
+                                                        include_bombs=True,
+                                                        include_crates=True)
 
     permuted_last_action = aux.apply_permutations(last_action, permutations)
     last_action_index = action_to_index[permuted_last_action]
@@ -362,14 +444,11 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #for i in range(len(self.Q)):
     #    self.logger.debug(self.Q[i])
 
-    global round
-    round = round + 1
-    #self.logger.debug(f"Round nr: {round}")
 
 
 
 
-    #self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
+    self.logger.debug(f'TR: Encountered event(s) {", ".join(map(repr, events))} in final step')
     self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
 
     #
@@ -397,8 +476,11 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #exec_time = time.time() - training_time
     #print(f"Execution time for function \"game_events_occurred\": {exec_time:.6f} seconds")
     #self.logger.debug(f"Execution time for function \"game_events_occurred\": {exec_time} seconds")
- 
 
+
+
+ 
+    round_in_game = 0
 def training_end():
     pass
     
@@ -428,16 +510,16 @@ def reward_from_events(self, events: List[str]) -> int:
         #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
         "IN_DANGER": -5,
         "OUT_DANGER": 3,
-        e.KILLED_SELF: -20,
+        e.KILLED_SELF: -200,
         e.GOT_KILLED: -20,
-        e.BOMB_DROPPED_NEXT_TO_CRATE: 3,  # no guarantee, that the reward is sufficient
+        e.BOMB_DROPPED_NEXT_TO_CRATE: 30,  # no guarantee, that the reward is sufficient
         e.BOMB_DROPPED_AWAY_FROM_CRATE: -4
     }
     reward_sum = 0
     for event in events:
         if event in game_rewards:
             reward_sum += game_rewards[event]
-    #self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
+    self.logger.info(f"TR: Awarded {reward_sum} for events {', '.join(events)}")
     return reward_sum
 
 
