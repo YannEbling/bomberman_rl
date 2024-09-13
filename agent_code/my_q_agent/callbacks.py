@@ -21,6 +21,7 @@ assert COLS == ROWS
 RANDOM_ACTION = .15
 
 custom_bomb_state = []
+BOMB_EVADE_STATES = 16
 
 def setup(self):
     """
@@ -82,6 +83,7 @@ def setup(self):
         # on the board plus one for the case of no bomb on the board
         number_of_crate_states = 2**4
         nr_states = number_of_agent_states * number_of_bomb_states * number_of_coin_states * number_of_crate_states
+        #nr_states += BOMB_EVADE_STATES
         shape = (nr_states, len(ACTIONS))
         self.logger.debug(f"New model has dimensions {shape}")
         self.Q = np.random.random(shape)
@@ -121,8 +123,8 @@ def act(self, game_state: dict) -> str:
     
     
     # todo Exploration vs exploitation
-    #if self.train and random.random() < RANDOM_ACTION:
-    if random.random() < RANDOM_ACTION:
+    if self.train and random.random() < RANDOM_ACTION:
+    #if random.random() < RANDOM_ACTION:
         self.logger.debug("CB: Choosing action purely at random.")
         return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
         #return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
@@ -138,11 +140,6 @@ def act(self, game_state: dict) -> str:
 
     agent_pos = game_state["self"][3]
     coin_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=game_state['coins'])
-
-    closest_enemy_index = aux.index_of_closest_item(agent_pos, [game_state["others"][k][3] for k in range(len(game_state["others"]))])
-    if coin_index == None:
-        coin_index = closest_enemy_index
-
     bomb_positions = [bomb_attributes[0] for bomb_attributes in custom_bomb_state]
     bomb_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=bomb_positions)
     index, permutations = aux.state_to_index(game_state, custom_bomb_state, coin_index=coin_index, bomb_index=bomb_index,
@@ -151,21 +148,13 @@ def act(self, game_state: dict) -> str:
     permuted_action = ACTIONS[action_index]
     action_chosen = aux.revert_permutations(permuted_action, permutations)
 
-    
-    #if len(game_state["coins"]) > 0:
-    #    coin_pos = game_state["coins"][0]
-    #    coin_pos_x = coin_pos[0]
-    #    coin_pos_y = coin_pos[1]
-    #    coin_pos_index = (coin_pos_x - 1 + cols * (coin_pos_y - 1)) + 1
-    
-    #if coin_index is None:
-    #    print("Couldn't find a coin")
-    
-    # 0 <= final_index <= 2400
-    #final_index = agent_pos_index * (cells - 1) + coin_pos_index - 1
+    #if is_bomb_under_players_feet(game_state):
+    #    index = len(self.Q) - BOMB_EVADE_STATES + compute_evade_bomb_index(game_state)
+    #    self.logger.debug(f"ON BOMB, INDEX: {index}")
+    #    action_index = np.argmax(self.Q[index])
+    #    action_chosen = ACTIONS[action_index]
+
     actions = self.Q[index]
-    #final_decision = np.argmax(actions)
-    #action_chosen = ACTIONS[final_decision]
 
     self.logger.debug(f"CB: Q[{index}]: {actions}")
     self.logger.debug(f"CB: Argmax-action of row is {permuted_action}")
@@ -266,6 +255,45 @@ def find_closest_crate(game_state: dict):
 
     return closest_crate
 
+def find_closest_bomb(game_state: dict):
+    bombs = game_state["bombs"]
+    agent = game_state["self"]
+
+    if len(bombs) <= 0:
+        return None
+
+    closest_bomb = bombs[0]
+    closest_bomb_dist = 1.797e+308 # max float value
+    for i in range(len(bombs)):
+        bomb_pos = bombs[i][0]
+        agent_pos = agent[3]
+        euclid_dist = math.sqrt(pow((bomb_pos[0] - agent_pos[0]), 2) + pow((bomb_pos[1] - agent_pos[1]), 2))
+        if euclid_dist < closest_bomb_dist:
+            closest_bomb = bombs[i]
+            closest_bomb_dist = euclid_dist
+
+    return closest_bomb
+
+def is_bomb_under_players_feet(game_state):
+    agent_pos = game_state["self"][3]
+    bombs = game_state["bombs"]
+    if len(bombs) == 0:
+        return False
+    for bomb in bombs:
+        bomb_pos = bomb[0]
+        if agent_pos[0] == bomb_pos[0] and agent_pos[1] == bomb_pos[1]:
+            return True
+    return False
+
+def compute_evade_bomb_index(game_state):
+    if is_bomb_under_players_feet(game_state):
+        left = can_escape_left(game_state)
+        right = can_escape_right(game_state)
+        up = can_escape_up(game_state)
+        down = can_escape_down(game_state)
+        index = left * 8 + right * 4 + up * 2 + down * 1
+        return index
+
 def state_to_features(game_state: dict) -> np.array:
     """
     *This is not a required function, but an idea to structure your code.*
@@ -291,3 +319,159 @@ def state_to_features(game_state: dict) -> np.array:
     stacked_channels = np.stack(channels)
     # and return them as a vector
     return stacked_channels.reshape(-1)
+
+def can_escape_left(game_state):
+    agent_pos = game_state["self"][3]
+    ag_x = agent_pos[0]
+    ag_y = agent_pos[1]
+
+    field = game_state["field"]
+
+    for i in range(1, 4):
+
+        # check for out of bounds
+        if ag_x - i < 0 or ag_x - i >= ROWS:
+            return 0
+
+        # check infront
+        tile = field[ag_x - i][ag_y]
+        if tile != 0:   # tile is crate (1) or stone wall (-1)
+            return 0
+
+        # check top
+        tile = field[ag_x - i][ag_y - 1]
+        if tile == 0:
+            return 1
+
+        # check bottom
+        tile = field[ag_x - i][ag_y + 1]
+        if tile == 0:
+            return 1
+
+    # check for out of bounds
+    if ag_x - 4 < 0 or ag_x - 4 >= ROWS:
+        return 0
+
+    # check last tile that is right out of range of bomb
+    tile = field[ag_x - 4][ag_y]
+    if tile == 0:
+        return 1
+
+    return 0
+
+def can_escape_right(game_state):
+    agent_pos = game_state["self"][3]
+    ag_x = agent_pos[0]
+    ag_y = agent_pos[1]
+
+    field = game_state["field"]
+
+    for i in range(1, 4):
+
+        # check for out of bounds
+        if ag_x + i < 0 or ag_x + i >= ROWS:
+            return 0
+
+        # check infront
+        tile = field[ag_x + i][ag_y]
+        if tile != 0:   # tile is crate (1) or stone wall (-1)
+            return 0
+
+        # check top
+        tile = field[ag_x + i][ag_y - 1]
+        if tile == 0:
+            return 1
+
+        # check bottom
+        tile = field[ag_x + i][ag_y + 1]
+        if tile == 0:
+            return 1
+
+    # check for out of bounds
+    if ag_x + 4 < 0 or ag_x + 4 >= ROWS:
+        return 0
+
+    # check last tile that is right out of range of bomb
+    tile = field[ag_x + 4][ag_y]
+    if tile == 0:
+        return 1
+
+    return 0
+
+def can_escape_up(game_state):
+    agent_pos = game_state["self"][3]
+    ag_x = agent_pos[0]
+    ag_y = agent_pos[1]
+
+    field = game_state["field"]
+
+    for i in range(1, 4):
+
+        # check for out of bounds
+        if ag_y - i < 0 or ag_y - i >= COLS:
+            return 0
+
+        # check infront
+        tile = field[ag_x][ag_y - i]
+        if tile != 0:   # tile is crate (1) or stone wall (-1)
+            return 0
+
+        # check left
+        tile = field[ag_x - 1][ag_y - i]
+        if tile == 0:
+            return 1
+
+        # check right
+        tile = field[ag_x + 1][ag_y - i]
+        if tile == 0:
+            return 1
+
+    # check for out of bounds
+    if ag_y - 4 < 0 or ag_y - 4 >= ROWS:
+        return 0
+
+    # check last tile that is right out of range of bomb
+    tile = field[ag_x][ag_y - 4]
+    if tile == 0:
+        return 1
+
+    return 0
+
+def can_escape_down(game_state):
+    agent_pos = game_state["self"][3]
+    ag_x = agent_pos[0]
+    ag_y = agent_pos[1]
+
+    field = game_state["field"]
+
+    for i in range(1, 4):
+
+        # check for out of bounds
+        if ag_y + i < 0 or ag_y + i >= COLS:
+            return 0
+
+        # check infront
+        tile = field[ag_x][ag_y + i]
+        if tile != 0:   # tile is crate (1) or stone wall (-1)
+            return 0
+
+        # check left
+        tile = field[ag_x - 1][ag_y + i]
+        if tile == 0:
+            return 1
+
+        # check right
+        tile = field[ag_x + 1][ag_y + i]
+        if tile == 0:
+            return 1
+
+    # check for out of bounds
+    if ag_y + 4 < 0 or ag_y + 4 >= ROWS:
+        return 0
+
+    # check last tile that is right out of range of bomb
+    tile = field[ag_x][ag_y + 4]
+    if tile == 0:
+        return 1
+
+    return 0

@@ -8,6 +8,13 @@ from .callbacks import state_to_features
 from .callbacks import find_closest_coin
 from .callbacks import find_closest_crate
 from .callbacks import custom_bomb_state
+from .callbacks import find_closest_bomb
+from .callbacks import is_bomb_under_players_feet
+from .callbacks import can_escape_down
+from .callbacks import can_escape_up
+from .callbacks import can_escape_left
+from .callbacks import can_escape_right
+from .callbacks import compute_evade_bomb_index
 
 import math
 
@@ -97,6 +104,7 @@ N = cols+1
 DOMAIN = np.arange(0, 17)
 VALID_POSITIONS = [(i, j) for i in DOMAIN for j in DOMAIN if condition(i, j, N)] + [(0, 0)]
 
+BOMB_EVADE_STATES = 16
 
 round_in_game = 0
 
@@ -174,10 +182,6 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     old_possible_closest_bomb_index = aux.index_of_closest_item(old_agent_pos, [custom_bomb_state[k][0] for k in
                                                                                 range(len(custom_bomb_state))])
 
-    old_closest_enemy_index = aux.index_of_closest_item(old_agent_pos, [old_game_state["others"][k][3] for k in range(len(old_game_state["others"]))])
-    if old_possible_closest_coin_index == None:
-        old_possible_closest_coin_index = old_closest_enemy_index
-
         
     # 0 <= state_index < 790.128
     old_state_index, permutations = aux.state_to_index(game_state=old_game_state,
@@ -194,6 +198,61 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #   Compute Action Index of old_game_state
     #
     old_action_index = action_to_index[permuted_old_action]
+
+
+    #
+    #   Evade bomb, if on bomb
+    #
+
+    #
+    #   Custom Event: Bomb dropped, check for escape routes and choose a good one
+    #
+
+#    if is_bomb_under_players_feet(old_game_state):
+#        self.logger.debug("BOMB_DROPPED ...")
+#        print(f"bomb dropped: self_action chosen {self_action}")
+#        if can_escape_left(old_game_state) == 1 and self_action == "LEFT":
+#            events.append(e.CHOSE_GOOD_ESCAPE)
+#            self.logger.debug("CHOSE_GOOD_ESCAPE")
+#            print("CHOSE_GOOD_ESCAPE")
+#        elif can_escape_right(old_game_state) == 1 and self_action == "RIGHT":
+#            events.append(e.CHOSE_GOOD_ESCAPE)
+#            self.logger.debug("CHOSE_GOOD_ESCAPE")
+#            print("CHOSE_GOOD_ESCAPE")
+#        elif can_escape_down(old_game_state) == 1 and self_action == "DOWN":
+#           events.append(e.CHOSE_GOOD_ESCAPE)
+#            self.logger.debug("CHOSE_GOOD_ESCAPE")
+#            print("CHOSE_GOOD_ESCAPE")
+#        elif can_escape_up(old_game_state) == 1 and self_action == "UP":
+#            events.append(e.CHOSE_GOOD_ESCAPE)
+#            self.logger.debug("CHOSE_GOOD_ESCAPE")
+#            print("CHOSE_GOOD_ESCAPE")
+#        elif can_escape_left(old_game_state) == 0 and self_action == "LEFT":
+#            events.append(e.CHOSE_BAD_ESCAPE)
+#            self.logger.debug("CHOSE_BAD_ESCAPE")
+#            print("CHOSE_BAD_ESCAPE")
+#        elif can_escape_right(old_game_state) == 0 and self_action == "RIGHT":
+#            events.append(e.CHOSE_BAD_ESCAPE)
+#            self.logger.debug("CHOSE_BAD_ESCAPE")
+#            print("CHOSE_BAD_ESCAPE")
+#        elif can_escape_down(old_game_state) == 0 and self_action == "DOWN":
+#            events.append(e.CHOSE_BAD_ESCAPE)
+#            self.logger.debug("CHOSE_BAD_ESCAPE")
+#            print("CHOSE_BAD_ESCAPE")
+#        elif can_escape_up(old_game_state) == 0 and self_action == "UP":
+#            events.append(e.CHOSE_BAD_ESCAPE)
+#            self.logger.debug("CHOSE_BAD_ESCAPE")
+#            print("CHOSE_BAD_ESCAPE")
+#        elif self_action == "WAIT":
+#            events.append(e.CHOSE_BAD_ESCAPE)
+#            self.logger.debug("CHOSE_BAD_ESCAPE")
+#            print("CHOSE_BAD_ESCAPE")
+#
+#        old_state_index = len(self.Q) - BOMB_EVADE_STATES + compute_evade_bomb_index(old_game_state)
+
+
+
+
     self.logger.debug(f"TR: old training")
     self.logger.debug(f"TR: Q[{old_state_index}]: {self.Q[old_state_index]}")
     self.logger.debug(f"TR: self_action: {self_action}")
@@ -215,9 +274,6 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                                                                                 range(len(custom_bomb_state))])
     
 
-    new_closest_enemy_index = aux.index_of_closest_item(new_agent_pos, [new_game_state["others"][k][3] for k in range(len(new_game_state["others"]))])
-    if new_possible_closest_coin_index == None:
-        new_possible_closest_coin_index = new_closest_enemy_index
     
     # 0 <= state_index <= 790.128
     new_state_index = aux.state_to_index(game_state=new_game_state,
@@ -228,6 +284,9 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                                          include_bombs=True,
                                          include_crates=True
                                          )[0]
+
+#    if is_bomb_under_players_feet(new_game_state):
+#        new_state_index = len(self.Q) - BOMB_EVADE_STATES + compute_evade_bomb_index(new_game_state)
 
     # Add custom event: walking into or out of bomb explosion radius (in or out danger)
     old_in_danger = in_danger(agent_position=old_agent_pos,
@@ -243,8 +302,6 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     if not old_in_danger and new_in_danger:
         if self_action != 'BOMB':
             events.append("IN_DANGER")
-
-
 
 
     #
@@ -385,10 +442,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
                                                                              range(len(custom_bomb_state))])
 
 
-    last_closest_enemy_index = aux.index_of_closest_item(last_agent_pos, [last_game_state["others"][k][3] for k in range(len(last_game_state["others"]))])
-    if possible_closest_coin_index == None:
-        possible_closest_coin_index = last_closest_enemy_index
-    
+
     #if len(last_game_state["coins"]) > 0:
     #    last_coin_pos   = last_game_state["coins"][0]
     #    last_coin_pos_x = last_coin_pos[0]
@@ -502,7 +556,7 @@ def reward_from_events(self, events: List[str]) -> int:
         e.COIN_COLLECTED: 15,
         #e.KILLED_OPPONENT: 5,
         e.WAITED: -0.8,
-        e.INVALID_ACTION: -3.2,
+        e.INVALID_ACTION: -5,
         e.MOVED_RIGHT: -0.2,
         e.MOVED_UP: -0.2,
         e.MOVED_DOWN: -0.2,
@@ -510,10 +564,14 @@ def reward_from_events(self, events: List[str]) -> int:
         #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
         "IN_DANGER": -5,
         "OUT_DANGER": 3,
-        e.KILLED_SELF: -200,
-        e.GOT_KILLED: -20,
-        e.BOMB_DROPPED_NEXT_TO_CRATE: 30,  # no guarantee, that the reward is sufficient
-        e.BOMB_DROPPED_AWAY_FROM_CRATE: -4
+        e.KILLED_SELF: -50,
+        e.GOT_KILLED: -50,
+        e.BOMB_DROPPED_NEXT_TO_CRATE: 3,  # no guarantee, that the reward is sufficient
+        e.BOMB_DROPPED_AWAY_FROM_CRATE: -6,
+        #e.CHOSE_GOOD_ESCAPE: 3,
+        #e.CHOSE_BAD_ESCAPE: -4,
+        #e.STEPPED_TOWARDS_BOMB: -1.2,
+        #e.STEPPED_AWAY_FROM_BOMB: 1
     }
     reward_sum = 0
     for event in events:
@@ -541,3 +599,6 @@ def in_danger(agent_position: tuple, bombs: list[tuple], bomb_index: any) -> boo
         if agent_x == bomb_x and abs(agent_y - bomb_y) < 4:
             return True
     return False
+
+
+
