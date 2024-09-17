@@ -53,6 +53,8 @@ def setup(self):
         with open("my-saved-model.pt", "rb") as file:
             self.Q = pickle.load(file)
             #print("TYPE OF LOADED MODEL: ", type(self.Q))
+        with open("output.txt", "a") as file:
+            file.write("random action")
 
     elif self.train or not os.path.isfile("my-saved-model.pt"):
     #if self.train or not os.path.isfile("my-saved-model.pt"):
@@ -92,7 +94,7 @@ def setup(self):
         nr_states *= 5
         shape = (nr_states, len(ACTIONS))
         self.logger.debug(f"New model has dimensions {shape}")
-        self.Q = np.random.random(shape).astype(np.float16)
+        self.Q = np.ones(shape).astype(np.float16)
         
     else:
         self.logger.info("Loading model from saved state.")
@@ -224,7 +226,7 @@ def act(self, game_state: dict) -> str:
 
 def update_index_including_bomb_evade_index(index, game_state):
     evade_bomb_index = compute_evade_bomb_index(game_state)
-    print(f"evade_bomb_index: {evade_bomb_index}")
+    #print(f"evade_bomb_index: {evade_bomb_index}")
     if evade_bomb_index == None:     
         return index
     else:

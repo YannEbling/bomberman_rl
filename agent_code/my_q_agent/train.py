@@ -55,11 +55,11 @@ RECORD_ENEMY_TRANSITIONS = 1.0  # record enemy transitions with probability ...
 # Custom
 
 # Learning rate alpha, 0.0 < alpha < 1.0
-ALPHA = 0.4
+ALPHA = 0.2
 
 
 # Discount factor gamma, 0.0 < gamma < 1.0
-GAMMA = 0.7
+GAMMA = 0.9
 
 
 MyTransition = namedtuple('Transition', ('state', 'action'))
@@ -207,7 +207,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         use_enemy = True
         
     if e.KILLED_OPPONENT in events:
-        print("opponent killed!")
+        #print("opponent killed!")
+        pass
         
     # 0 <= state_index < 790.128
     old_state_index, permutations = aux.state_to_index(game_state=old_game_state,
@@ -385,9 +386,15 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         print("touched enemy!")
         events.append(e.TOUCHED_ENEMY)
 
-
-
-
+    with open("output.txt", "a") as file:
+        output = f"old_q: {self.Q[old_state_index]}"
+        file.write(output)
+        
+        
+    if e.BOMB_EXPLODED in events:
+        events.append(e.SURVIVED_BOMB_EXPLOSION)
+    
+    
     #
     #   Update Q-value of state-action tupel
     #
@@ -403,26 +410,6 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
 
     
-    if round_in_game == 1:
-        #print("new round")
-        with open("output.txt", "w") as file:
-            file.write("")
-
-    with open("output.txt", "a") as file:
-    # Write the string to the file
-        #if old_action_index == 5:
-        #if permuted_old_action == "BOMB":
-        output = f"""
-        action: {permuted_old_action}
-        state index: {old_state_index}
-        reward: {reward}
-        events: {events}
-        old_q: {self.Q[old_state_index]}
-        new_q: {self.Q[new_state_index]}
-        """
-        file.write(output)
-
-
 
 
 
@@ -441,6 +428,31 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     
     # set new value
     self.Q[old_state_index][old_action_index] = new_value
+
+
+
+    if round_in_game == 1:
+        #print("new round")
+        with open("output.txt", "w") as file:
+            file.write("")
+
+    with open("output.txt", "a") as file:
+    # Write the string to the file
+        #if old_action_index == 5:
+        #if permuted_old_action == "BOMB":
+        output = f"""
+        permutated action: {permuted_old_action}
+        self action: {self_action}
+        state index: {old_state_index}
+        reward: {reward}
+        events: {events}
+        updated_old_q: {self.Q[old_state_index]}
+        
+        """
+        file.write(output)
+
+
+
 
     self.logger.debug(f"TR: new q after update: {self.Q[old_state_index]}")
 
@@ -570,6 +582,24 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     permuted_last_action = aux.apply_permutations(last_action, permutations)
     last_action_index = action_to_index[permuted_last_action]
 
+
+
+
+    with open("output.txt", "a") as file:
+        output = f"""
+        permutated action: {permuted_last_action}
+        self action: {last_action}
+        state index: {last_state_index}
+        events: {events}
+        old_last_q: {self.Q[last_state_index]}
+        """
+        file.write(output)
+        
+
+
+
+
+
     #
     #   Update Q-value of state-action tupel
     #
@@ -581,10 +611,12 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     factor3 = ALPHA * ( reward + factor2 )
     new_value = factor1 + factor3
 
+
+
+    #
+    #   Update Q
+    #
     self.Q[last_state_index][last_action_index] = new_value
-
-
-
 
     self.logger.debug(f'TR: Encountered event(s) {", ".join(map(repr, events))} in final step')
     self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
@@ -615,7 +647,19 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #print(f"Execution time for function \"game_events_occurred\": {exec_time:.6f} seconds")
     #self.logger.debug(f"Execution time for function \"game_events_occurred\": {exec_time} seconds")
 
-
+    with open("output.txt", "a") as file:
+    # Write the string to the file
+        #if old_action_index == 5:
+        #if permuted_old_action == "BOMB":
+        output = f"""
+        permutated action: {permuted_last_action}
+        self action: {last_action}
+        state index: {last_state_index}
+        reward: {reward}
+        events: {events}
+        last_q: {self.Q[last_state_index]}
+        """
+        file.write(output)
 
  
     round_in_game = 0
@@ -639,23 +683,24 @@ def reward_from_events(self, events: List[str]) -> int:
     game_rewards = {
         e.COIN_COLLECTED: 100,
         #e.KILLED_OPPONENT: 5,
-        e.WAITED: -0.8,
-        e.INVALID_ACTION: -3.2,
+        e.WAITED: -1.0,
+        e.INVALID_ACTION: -10.0,
         e.MOVED_RIGHT: -0.2,
         e.MOVED_UP: -0.2,
         e.MOVED_DOWN: -0.2,
         e.MOVED_LEFT: -0.2,
         #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
         "IN_DANGER": -10,
-        "OUT_DANGER": 5,
+        "OUT_DANGER": 10,
         e.KILLED_SELF: -200,
         e.GOT_KILLED: -200,
         e.BOMB_DROPPED_NEXT_TO_CRATE: 50,  # no guarantee, that the reward is sufficient
         e.BOMB_DROPPED_AWAY_FROM_CRATE: -60,
         e.TOUCHED_ENEMY: 50,
         e.KILLED_OPPONENT: 800,
-        e.CHOSE_GOOD_ESCAPE: 5.0,
-        #e.CHOSE_BAD_ESCAPE: -4,
+        e.CHOSE_GOOD_ESCAPE: 20.0,
+        e.CHOSE_BAD_ESCAPE: -20.0,
+        e.SURVIVED_BOMB_EXPLOSION: 80,
         #e.STEPPED_TOWARDS_BOMB: -1.2,
         #e.STEPPED_AWAY_FROM_BOMB: 1
     }

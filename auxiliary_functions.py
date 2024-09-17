@@ -134,10 +134,11 @@ def state_to_index(game_state: dict, custom_bomb_state, coin_index=None, bomb_in
 
         if include_crates:
             number_of_bomb_states = int((n - 1) ** 2 - (n / 2 - 1) ** 2) + 1  # this is the total number of valid positions
-            old_crate_up = int(game_state['field'][agent_position[0], agent_position[0] - 1] == 1)
-            old_crate_right = int(game_state['field'][agent_position[0] + 1, agent_position[0]] == 1)
-            old_crate_down = int(game_state['field'][agent_position[0], agent_position[0] + 1] == 1)
-            old_crate_left = int(game_state['field'][agent_position[0] - 1, agent_position[0]] == 1)
+            old_crate_up = int(game_state['field'][agent_position[0], agent_position[1] - 1] == 1)
+            old_crate_right = int(game_state['field'][agent_position[0] + 1, agent_position[1]] == 1)
+            old_crate_down = int(game_state['field'][agent_position[0], agent_position[1] + 1] == 1)
+            old_crate_left = int(game_state['field'][agent_position[0] - 1, agent_position[1]] == 1)
+
 
             # check if other agents are nearby (they are treated equal to crates)
             others_positions = [agent_attributes[-1] for agent_attributes in game_state['others']]  # gather the other
@@ -188,10 +189,10 @@ def state_to_index(game_state: dict, custom_bomb_state, coin_index=None, bomb_in
         # _of_tiles + 1 for the coin
 
     if include_crates:
-        crate_up = int(game_state['field'][agent_position[0], agent_position[0] - 1] == 1)
-        crate_right = int(game_state['field'][agent_position[0] + 1, agent_position[0]] == 1)
-        crate_down = int(game_state['field'][agent_position[0], agent_position[0] + 1] == 1)
-        crate_left = int(game_state['field'][agent_position[0] - 1, agent_position[0]] == 1)
+        crate_up = int(game_state['field'][agent_position[0], agent_position[1] - 1] == 1)
+        crate_right = int(game_state['field'][agent_position[0] + 1, agent_position[1]] == 1)
+        crate_down = int(game_state['field'][agent_position[0], agent_position[1] + 1] == 1)
+        crate_left = int(game_state['field'][agent_position[0] - 1, agent_position[1]] == 1)
 
         # check if other agents are nearby (they are treated equal to crates)
         others_positions = [agent_attributes[-1] for agent_attributes in game_state['others']]  # gather the other
