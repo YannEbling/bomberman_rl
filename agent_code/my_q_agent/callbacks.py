@@ -130,7 +130,7 @@ def act(self, game_state: dict) -> str:
         #return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
 
     self.logger.debug("CB: Querying model for action.")
-    
+    self.logger.debug(f"CB: closest crate {find_closest_crate(game_state)}")
 
     
     #---
@@ -138,12 +138,44 @@ def act(self, game_state: dict) -> str:
     # 'self': (str, int, bool, (int, int))
 
 
+
+
     agent_pos = game_state["self"][3]
     coin_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=game_state['coins'])
     bomb_positions = [bomb_attributes[0] for bomb_attributes in custom_bomb_state]
     bomb_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=bomb_positions)
+    
+    
+    
+    
+    closest_enemy_index = aux.index_of_closest_item(agent_pos, [game_state['others'][k][3] for k in range(len(game_state['others']))])
+        
+    enemy_pos = game_state['others'][closest_enemy_index][3]
+    use_enemy = False
+    if coin_index != None:
+        coin_pos = game_state['coins'][coin_index]
+        dist_to_coin = math.sqrt(pow((coin_pos[0] - agent_pos[0]), 2) + pow((coin_pos[1] - agent_pos[1]), 2))
+        dist_to_enemy = math.sqrt(pow((enemy_pos[0] - agent_pos[0]), 2) + pow((enemy_pos[1] - agent_pos[1]), 2))
+        if dist_to_enemy < dist_to_coin:
+            use_enemy = True
+            coin_index = closest_enemy_index
+        
+        #print("")
+        #print("coin")
+        #print(coin_pos)
+        #print(dist_to_coin)
+        #print("enemy")
+        #print(enemy_pos)
+        #print(dist_to_enemy)
+        
+    else:
+        coin_index = closest_enemy_index
+        use_enemy = True
+    
+    
+    
     index, permutations = aux.state_to_index(game_state, custom_bomb_state, coin_index=coin_index, bomb_index=bomb_index,
-                                             dim_reduce=True, include_bombs=True, include_crates=True)
+                                             dim_reduce=True, include_bombs=True, include_crates=True, enemy_instead_of_coin=use_enemy)
     action_index = np.argmax(self.Q[index])
     permuted_action = ACTIONS[action_index]
     action_chosen = aux.revert_permutations(permuted_action, permutations)

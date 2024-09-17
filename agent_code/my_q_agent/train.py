@@ -182,6 +182,32 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     old_possible_closest_bomb_index = aux.index_of_closest_item(old_agent_pos, [custom_bomb_state[k][0] for k in
                                                                                 range(len(custom_bomb_state))])
 
+    old_closest_enemy_index = aux.index_of_closest_item(old_agent_pos, [old_game_state['others'][k][3] for k in range(len(old_game_state['others']))])
+        
+    enemy_pos = old_game_state['others'][old_closest_enemy_index][3]
+    use_enemy = False
+    if old_possible_closest_coin_index != None:
+        coin_pos = old_game_state['coins'][old_possible_closest_coin_index]
+        dist_to_coin = math.sqrt(pow((coin_pos[0] - old_agent_pos[0]), 2) + pow((coin_pos[1] - old_agent_pos[1]), 2))
+        dist_to_enemy = math.sqrt(pow((enemy_pos[0] - old_agent_pos[0]), 2) + pow((enemy_pos[1] - old_agent_pos[1]), 2))
+        if dist_to_enemy < dist_to_coin:
+            use_enemy = True
+            old_possible_closest_coin_index = old_closest_enemy_index
+        
+        #print("")
+        #print("coin")
+        #print(coin_pos)
+        #print(dist_to_coin)
+        #print("enemy")
+        #print(enemy_pos)
+        #print(dist_to_enemy)
+        
+    else:
+        old_possible_closest_coin_index = old_closest_enemy_index
+        use_enemy = True
+        
+    if e.KILLED_OPPONENT in events:
+        print("opponent killed!")
         
     # 0 <= state_index < 790.128
     old_state_index, permutations = aux.state_to_index(game_state=old_game_state,
@@ -190,7 +216,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                                                        bomb_index=old_possible_closest_bomb_index,
                                                        dim_reduce=True,
                                                        include_bombs=True,
-                                                       include_crates=True)
+                                                       include_crates=True,
+                                                       enemy_instead_of_coin=use_enemy)
     
     permuted_old_action = aux.apply_permutations(self_action, permutations)
     
@@ -273,7 +300,30 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     new_possible_closest_bomb_index = aux.index_of_closest_item(new_agent_pos, [custom_bomb_state[k][0] for k in
                                                                                 range(len(custom_bomb_state))])
     
-
+    new_closest_enemy_index = aux.index_of_closest_item(new_agent_pos, [new_game_state['others'][k][3] for k in range(len(new_game_state['others']))])
+        
+    
+    use_enemy = False
+    if new_possible_closest_coin_index != None and new_closest_enemy_index != None:
+        enemy_pos = new_game_state['others'][new_closest_enemy_index][3]
+        coin_pos = new_game_state['coins'][new_possible_closest_coin_index]
+        dist_to_coin = math.sqrt(pow((coin_pos[0] - new_agent_pos[0]), 2) + pow((coin_pos[1] - new_agent_pos[1]), 2))
+        dist_to_enemy = math.sqrt(pow((enemy_pos[0] - new_agent_pos[0]), 2) + pow((enemy_pos[1] - new_agent_pos[1]), 2))
+        if dist_to_enemy < dist_to_coin:
+            use_enemy = True
+            new_possible_closest_coin_index = new_closest_enemy_index
+        
+        #print("")
+        #print("coin")
+        #print(coin_pos)
+        #print(dist_to_coin)
+        #print("enemy")
+        #print(enemy_pos)
+        #print(dist_to_enemy)
+        
+    else:
+        new_possible_closest_coin_index = new_closest_enemy_index
+        use_enemy = True
     
     # 0 <= state_index <= 790.128
     new_state_index = aux.state_to_index(game_state=new_game_state,
@@ -282,7 +332,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                                          bomb_index=new_possible_closest_bomb_index,
                                          dim_reduce=True,
                                          include_bombs=True,
-                                         include_crates=True
+                                         include_crates=True,
+                                         enemy_instead_of_coin=use_enemy
                                          )[0]
 
 #    if is_bomb_under_players_feet(new_game_state):
@@ -324,6 +375,13 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
 
 
+    
+    dist_to_enemy = math.sqrt(pow((enemy_pos[0] - new_agent_pos[0]), 2) + pow((enemy_pos[1] - new_agent_pos[1]), 2))
+    if dist_to_enemy < 1.01 and use_enemy:
+        print("touched enemy!")
+        events.append(e.TOUCHED_ENEMY)
+
+
 
 
     #
@@ -338,6 +396,33 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #factor2 = ALPHA * reward
     #factor3 = ALPHA * GAMMA * np.argmax( self.Q[new_state_index] )
     new_value = factor1 + factor3
+
+
+    
+    if round_in_game == 1:
+        #print("new round")
+        with open("output.txt", "w") as file:
+            file.write("")
+
+    with open("output.txt", "a") as file:
+    # Write the string to the file
+        #if old_action_index == 5:
+        #if permuted_old_action == "BOMB":
+        output = f"""
+        action: {permuted_old_action}
+        state index: {old_state_index}
+        reward: {reward}
+        events: {events}
+        old_q: {self.Q[old_state_index]}
+        new_q: {self.Q[new_state_index]}
+        """
+        file.write(output)
+
+
+
+
+
+
 
     #self.logger.debug(f"np.argmax: {np.argmax(self.Q[new_state_index])}")
     #self.logger.debug(f"np.argmax value: {self.Q[new_state_index][argmax]}")
@@ -442,16 +527,29 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
                                                                              range(len(custom_bomb_state))])
 
 
-
-    #if len(last_game_state["coins"]) > 0:
-    #    last_coin_pos   = last_game_state["coins"][0]
-    #    last_coin_pos_x = last_coin_pos[0]
-    #    last_coin_pos_y = last_coin_pos[1]
-    #    last_coin_pos_index = (last_coin_pos_x - 1 + cols * (last_coin_pos_y - 1)) + 1
-    
-    #if possible_closest_coin_index is None:
-        #print("Couldn't find a coin")
-    
+    last_closest_enemy_index = aux.index_of_closest_item(last_agent_pos, [last_game_state['others'][k][3] for k in range(len(last_game_state['others']))])
+        
+    enemy_pos = last_game_state['others'][last_closest_enemy_index][3]
+    use_enemy = False
+    if possible_closest_coin_index != None:
+        coin_pos = last_game_state['coins'][possible_closest_coin_index]
+        dist_to_coin = math.sqrt(pow((coin_pos[0] - last_agent_pos[0]), 2) + pow((coin_pos[1] - last_agent_pos[1]), 2))
+        dist_to_enemy = math.sqrt(pow((enemy_pos[0] - last_agent_pos[0]), 2) + pow((enemy_pos[1] - last_agent_pos[1]), 2))
+        if dist_to_enemy < dist_to_coin:
+            use_enemy = True
+            possible_closest_coin_index = last_closest_enemy_index
+        
+        #print("")
+        #print("coin")
+        #print(coin_pos)
+        #print(dist_to_coin)
+        #print("enemy")
+        #print(enemy_pos)
+        #print(dist_to_enemy)
+        
+    else:
+        possible_closest_coin_index = last_closest_enemy_index
+        use_enemy = True
     
     # 0 <= state_index < 790.128
     last_state_index, permutations = aux.state_to_index(game_state=last_game_state,
@@ -460,7 +558,8 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
                                                         bomb_index=possible_closest_bomb_index,
                                                         dim_reduce=True,
                                                         include_bombs=True,
-                                                        include_crates=True)
+                                                        include_crates=True,
+                                                        enemy_instead_of_coin=use_enemy)
 
     permuted_last_action = aux.apply_permutations(last_action, permutations)
     last_action_index = action_to_index[permuted_last_action]
@@ -477,27 +576,6 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     new_value = factor1 + factor3
 
     self.Q[last_state_index][last_action_index] = new_value
-    #
-    #   Update Q-value of state-action tupel
-    #
-    # set new value
-    #r = reward_from_events(self, events)
-    #if r > 1.0:
-    #    for i in range(len(self.Q[last_state_index])):
-    #        self.Q[last_state_index][i] = r
-
-    #   Debug - coin found?
-    for event in events:
-        if event == e.COIN_COLLECTED:
-            global coins_collected 
-            coins_collected = coins_collected + 1
-    
-    #print(f"Coins collected: {coins_collected}")
-
-
-    #for i in range(len(self.Q)):
-    #    self.logger.debug(self.Q[i])
-
 
 
 
@@ -553,26 +631,29 @@ def reward_from_events(self, events: List[str]) -> int:
     
     
     game_rewards = {
-        e.COIN_COLLECTED: 15,
+        e.COIN_COLLECTED: 200,
         #e.KILLED_OPPONENT: 5,
         e.WAITED: -0.8,
-        e.INVALID_ACTION: -5,
+        e.INVALID_ACTION: -3.2,
         e.MOVED_RIGHT: -0.2,
         e.MOVED_UP: -0.2,
         e.MOVED_DOWN: -0.2,
         e.MOVED_LEFT: -0.2,
         #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
-        "IN_DANGER": -5,
-        "OUT_DANGER": 3,
-        e.KILLED_SELF: -50,
-        e.GOT_KILLED: -50,
-        e.BOMB_DROPPED_NEXT_TO_CRATE: 3,  # no guarantee, that the reward is sufficient
-        e.BOMB_DROPPED_AWAY_FROM_CRATE: -6,
+        "IN_DANGER": -10,
+        "OUT_DANGER": 5,
+        e.KILLED_SELF: -200,
+        e.GOT_KILLED: -200,
+        e.BOMB_DROPPED_NEXT_TO_CRATE: 50,  # no guarantee, that the reward is sufficient
+        e.BOMB_DROPPED_AWAY_FROM_CRATE: -60,
+        e.TOUCHED_ENEMY: 50,
+        e.KILLED_OPPONENT: 800,
         #e.CHOSE_GOOD_ESCAPE: 3,
         #e.CHOSE_BAD_ESCAPE: -4,
         #e.STEPPED_TOWARDS_BOMB: -1.2,
         #e.STEPPED_AWAY_FROM_BOMB: 1
     }
+
     reward_sum = 0
     for event in events:
         if event in game_rewards:
