@@ -42,7 +42,7 @@ def index_of_closest_item(agent_position: tuple, item_positions: List[tuple]):
     return i_min
 
 
-def state_to_index(game_state: dict, custom_bomb_state, coin_index=None, bomb_index=None, dim_reduce=False, include_bombs=False, include_crates=False):
+def state_to_index(game_state: dict, custom_bomb_state, coin_index=None, bomb_index=None, dim_reduce=False, include_bombs=False, include_crates=False, enemy_instead_of_coin=False):
     """
     This function is a bit messy and even if it would work, it would only be applicable for this very simple setup and
     can get very complicated. We should definitely look for a better feature extraction for more complex states.
@@ -53,17 +53,23 @@ def state_to_index(game_state: dict, custom_bomb_state, coin_index=None, bomb_in
     assert n % 2 == 0
 
     agent_position = game_state["self"][-1]
-    if len(game_state["coins"]) != 0:
-        if coin_index is None:  # if there is no coin_index given...
-            # ...find the closest coin
-            coin_index = index_of_closest_item(agent_position, game_state["coins"])
-        coin_position = game_state["coins"][coin_index]  # use the coins position
+    if enemy_instead_of_coin:
+        coin_position = game_state['others'][coin_index][3]
+        
+        
     else:
-        coin_position = (0, 0)  # there are no coins and the game should end (in single player round)
-        # remark: similar to the bomb situation, the position (0,0) of a coin can be regarded as the case, where there
-        # is no coin left on the board. In this case, the game could still go on (other agents might still be alive),
-        # but the training should ignore the coin. The state needs to be numbered though, for which we need this extra
-        # position, corresponding to the digit 0 in the index of the state.
+        if len(game_state["coins"]) != 0:
+            if coin_index is None:  # if there is no coin_index given...
+                # ...find the closest coin
+                coin_index = index_of_closest_item(agent_position, game_state["coins"])
+            coin_position = game_state["coins"][coin_index]  # use the coins position
+        else:
+            coin_position = (0, 0)  # there are no coins and the game should end (in single player round)
+            # remark: similar to the bomb situation, the position (0,0) of a coin can be regarded as the case, where there
+            # is no coin left on the board. In this case, the game could still go on (other agents might still be alive),
+            # but the training should ignore the coin. The state needs to be numbered though, for which we need this extra
+            # position, corresponding to the digit 0 in the index of the state.
+
 
     if include_bombs:
         if len(custom_bomb_state):
