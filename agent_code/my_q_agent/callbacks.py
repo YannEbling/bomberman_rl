@@ -23,6 +23,8 @@ RANDOM_ACTION = .15
 custom_bomb_state = []
 BOMB_EVADE_STATES = 16
 
+STATES_QUARTER = 0
+
 def setup(self):
     """
     Setup your code. This is called once when loading each agent.
@@ -83,10 +85,14 @@ def setup(self):
         # on the board plus one for the case of no bomb on the board
         number_of_crate_states = 2**4
         nr_states = number_of_agent_states * number_of_bomb_states * number_of_coin_states * number_of_crate_states
-        #nr_states += BOMB_EVADE_STATES
+        
+        global STATES_QUARTER
+        STATES_QUARTER = nr_states
+        
+        #nr_states *= 5
         shape = (nr_states, len(ACTIONS))
         self.logger.debug(f"New model has dimensions {shape}")
-        self.Q = np.random.random(shape)
+        self.Q = np.random.random(shape).astype(np.float16)
         
     else:
         self.logger.info("Loading model from saved state.")
@@ -176,6 +182,24 @@ def act(self, game_state: dict) -> str:
     
     index, permutations = aux.state_to_index(game_state, custom_bomb_state, coin_index=coin_index, bomb_index=bomb_index,
                                              dim_reduce=True, include_bombs=True, include_crates=True, enemy_instead_of_coin=use_enemy)
+    
+    
+    
+    
+    
+    
+    
+    
+    #index = update_index_including_bomb_evade_index(index, game_state)
+    
+    
+    
+    
+    
+    
+    
+    
+    
     action_index = np.argmax(self.Q[index])
     permuted_action = ACTIONS[action_index]
     action_chosen = aux.revert_permutations(permuted_action, permutations)
@@ -196,6 +220,17 @@ def act(self, game_state: dict) -> str:
    
     #---
     return action_chosen
+
+
+def update_index_including_bomb_evade_index(index, game_state):
+    evade_bomb_index = compute_evade_bomb_index(game_state)
+    print(f"evade_bomb_index: {evade_bomb_index}")
+    if evade_bomb_index == None:     
+        return index
+    else:
+        return evade_bomb_index * STATES_QUARTER + index
+        
+  
 
 def update_custom_bomb_state(game_state):
 
@@ -288,7 +323,7 @@ def find_closest_crate(game_state: dict):
     return closest_crate
 
 def find_closest_bomb(game_state: dict):
-    bombs = game_state["bombs"]
+    bombs = custom_bomb_state
     agent = game_state["self"]
 
     if len(bombs) <= 0:
@@ -308,7 +343,7 @@ def find_closest_bomb(game_state: dict):
 
 def is_bomb_under_players_feet(game_state):
     agent_pos = game_state["self"][3]
-    bombs = game_state["bombs"]
+    bombs = custom_bomb_state
     if len(bombs) == 0:
         return False
     for bomb in bombs:
@@ -319,12 +354,19 @@ def is_bomb_under_players_feet(game_state):
 
 def compute_evade_bomb_index(game_state):
     if is_bomb_under_players_feet(game_state):
-        left = can_escape_left(game_state)
-        right = can_escape_right(game_state)
-        up = can_escape_up(game_state)
-        down = can_escape_down(game_state)
-        index = left * 8 + right * 4 + up * 2 + down * 1
-        return index
+        if can_escape_left(game_state) == 1:
+            return 1
+        elif can_escape_right(game_state) == 1:
+            return 2
+        elif can_escape_up(game_state) == 1:
+            return 3
+        elif can_escape_down(game_state) == 1:
+            return 4
+        else:
+            return 0
+    else:
+        return 0
+    
 
 def state_to_features(game_state: dict) -> np.array:
     """
@@ -358,7 +400,11 @@ def can_escape_left(game_state):
     ag_y = agent_pos[1]
 
     field = game_state["field"]
-
+    
+    #bomb_pos = find_closest_bomb(game_state)[0]
+    #agent_bomb_pos_dist_x = abs(bomb_pos[0] - agent_pos[0])
+    #end = 4 - agent_bomb_pos_dist_x
+    
     for i in range(1, 4):
 
         # check for out of bounds

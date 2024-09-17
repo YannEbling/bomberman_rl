@@ -25,7 +25,7 @@ def merge(matrices):
     print(f"cols {cols}")
     print(f"rows {rows}")
 
-    sum = np.zeros((cols, rows))
+    sum = np.zeros((cols, rows)).astype(np.float16)
     for i in range(mats):
         sum += matrices[i]
     mean_matrix = sum / mats

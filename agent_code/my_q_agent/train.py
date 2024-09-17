@@ -15,6 +15,7 @@ from .callbacks import can_escape_up
 from .callbacks import can_escape_left
 from .callbacks import can_escape_right
 from .callbacks import compute_evade_bomb_index
+from .callbacks import update_index_including_bomb_evade_index
 
 import math
 
@@ -154,7 +155,6 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     :param events: The events that occurred when going from  `old_game_state` to `new_game_state`
     """
     
-    
     global round_in_game
     round_in_game = round_in_game + 1
     self.logger.debug(f"TR: round: {round_in_game}")
@@ -174,7 +174,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #
     old_agent_pos = old_game_state["self"][3]
 
-
+    
 
 
     # Coin and bomb position
@@ -235,47 +235,10 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #   Custom Event: Bomb dropped, check for escape routes and choose a good one
     #
 
-#    if is_bomb_under_players_feet(old_game_state):
-#        self.logger.debug("BOMB_DROPPED ...")
-#        print(f"bomb dropped: self_action chosen {self_action}")
-#        if can_escape_left(old_game_state) == 1 and self_action == "LEFT":
-#            events.append(e.CHOSE_GOOD_ESCAPE)
-#            self.logger.debug("CHOSE_GOOD_ESCAPE")
-#            print("CHOSE_GOOD_ESCAPE")
-#        elif can_escape_right(old_game_state) == 1 and self_action == "RIGHT":
-#            events.append(e.CHOSE_GOOD_ESCAPE)
-#            self.logger.debug("CHOSE_GOOD_ESCAPE")
-#            print("CHOSE_GOOD_ESCAPE")
-#        elif can_escape_down(old_game_state) == 1 and self_action == "DOWN":
-#           events.append(e.CHOSE_GOOD_ESCAPE)
-#            self.logger.debug("CHOSE_GOOD_ESCAPE")
-#            print("CHOSE_GOOD_ESCAPE")
-#        elif can_escape_up(old_game_state) == 1 and self_action == "UP":
-#            events.append(e.CHOSE_GOOD_ESCAPE)
-#            self.logger.debug("CHOSE_GOOD_ESCAPE")
-#            print("CHOSE_GOOD_ESCAPE")
-#        elif can_escape_left(old_game_state) == 0 and self_action == "LEFT":
-#            events.append(e.CHOSE_BAD_ESCAPE)
-#            self.logger.debug("CHOSE_BAD_ESCAPE")
-#            print("CHOSE_BAD_ESCAPE")
-#        elif can_escape_right(old_game_state) == 0 and self_action == "RIGHT":
-#            events.append(e.CHOSE_BAD_ESCAPE)
-#            self.logger.debug("CHOSE_BAD_ESCAPE")
-#            print("CHOSE_BAD_ESCAPE")
-#        elif can_escape_down(old_game_state) == 0 and self_action == "DOWN":
-#            events.append(e.CHOSE_BAD_ESCAPE)
-#            self.logger.debug("CHOSE_BAD_ESCAPE")
-#            print("CHOSE_BAD_ESCAPE")
-#        elif can_escape_up(old_game_state) == 0 and self_action == "UP":
-#            events.append(e.CHOSE_BAD_ESCAPE)
-#            self.logger.debug("CHOSE_BAD_ESCAPE")
-#            print("CHOSE_BAD_ESCAPE")
-#        elif self_action == "WAIT":
-#            events.append(e.CHOSE_BAD_ESCAPE)
-#            self.logger.debug("CHOSE_BAD_ESCAPE")
-#            print("CHOSE_BAD_ESCAPE")
-#
-#        old_state_index = len(self.Q) - BOMB_EVADE_STATES + compute_evade_bomb_index(old_game_state)
+
+
+    #print(f"old_state_index:                         {old_state_index}")
+    #print(f"update_index_including_bomb_evade_index: {update_index_including_bomb_evade_index(old_state_index, old_game_state)}")
 
 
 
@@ -353,6 +316,43 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     if not old_in_danger and new_in_danger:
         if self_action != 'BOMB':
             events.append("IN_DANGER")
+
+
+    #if is_bomb_under_players_feet(old_game_state):
+        #self.logger.debug("BOMB_DROPPED ...")
+        #print(f"bomb dropped: self_action chosen {self_action}")
+        #if can_escape_left(old_game_state) == 1 and old_agent_pos[0] == new_agent_pos[0] + 1:
+            #events.append(e.CHOSE_GOOD_ESCAPE)
+            #self.logger.debug("CHOSE_GOOD_ESCAPE")
+            #print("CHOSE_GOOD_ESCAPE")
+        #elif can_escape_right(old_game_state) == 1 and old_agent_pos[0] == new_agent_pos[0] - 1:
+            #events.append(e.CHOSE_GOOD_ESCAPE)
+            #self.logger.debug("CHOSE_GOOD_ESCAPE")
+            #print("CHOSE_GOOD_ESCAPE")
+        #elif can_escape_down(old_game_state) == 1 and 0 and old_agent_pos[1] == new_agent_pos[1] - 1:
+            #events.append(e.CHOSE_GOOD_ESCAPE)
+            #self.logger.debug("CHOSE_GOOD_ESCAPE")
+            #print("CHOSE_GOOD_ESCAPE")
+        #elif can_escape_up(old_game_state) == 1 and 0 and old_agent_pos[1] == new_agent_pos[1] + 1:
+            #events.append(e.CHOSE_GOOD_ESCAPE)
+            #self.logger.debug("CHOSE_GOOD_ESCAPE")
+            #print("CHOSE_GOOD_ESCAPE")
+        #elif can_escape_left(old_game_state) == 0 and old_agent_pos[0] == new_agent_pos[0] + 1:
+            #events.append(e.CHOSE_BAD_ESCAPE)
+            #self.logger.debug("CHOSE_BAD_ESCAPE")
+            #print("CHOSE_BAD_ESCAPE")
+        #elif can_escape_right(old_game_state) == 0 and old_agent_pos[0] == new_agent_pos[0] - 1:
+            #events.append(e.CHOSE_BAD_ESCAPE)
+            #self.logger.debug("CHOSE_BAD_ESCAPE")
+            #print("CHOSE_BAD_ESCAPE")
+        #elif can_escape_down(old_game_state) == 0 and old_agent_pos[1] == new_agent_pos[1] - 1:
+            #events.append(e.CHOSE_BAD_ESCAPE)
+            #self.logger.debug("CHOSE_BAD_ESCAPE")
+            #print("CHOSE_BAD_ESCAPE")
+        #elif can_escape_up(old_game_state) == 0 and old_agent_pos[1] == new_agent_pos[1] + 1:
+            #events.append(e.CHOSE_BAD_ESCAPE)
+            #self.logger.debug("CHOSE_BAD_ESCAPE")
+            #print("CHOSE_BAD_ESCAPE")
 
 
     #
@@ -631,7 +631,7 @@ def reward_from_events(self, events: List[str]) -> int:
     
     
     game_rewards = {
-        e.COIN_COLLECTED: 200,
+        e.COIN_COLLECTED: 100,
         #e.KILLED_OPPONENT: 5,
         e.WAITED: -0.8,
         e.INVALID_ACTION: -3.2,
@@ -648,7 +648,7 @@ def reward_from_events(self, events: List[str]) -> int:
         e.BOMB_DROPPED_AWAY_FROM_CRATE: -60,
         e.TOUCHED_ENEMY: 50,
         e.KILLED_OPPONENT: 800,
-        #e.CHOSE_GOOD_ESCAPE: 3,
+        e.CHOSE_GOOD_ESCAPE: 0.2,
         #e.CHOSE_BAD_ESCAPE: -4,
         #e.STEPPED_TOWARDS_BOMB: -1.2,
         #e.STEPPED_AWAY_FROM_BOMB: 1
