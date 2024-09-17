@@ -219,13 +219,14 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                                                        include_crates=True,
                                                        enemy_instead_of_coin=use_enemy)
     
+    old_state_index = update_index_including_bomb_evade_index(old_state_index, old_game_state)
+    
     permuted_old_action = aux.apply_permutations(self_action, permutations)
     
     #
     #   Compute Action Index of old_game_state
     #
     old_action_index = action_to_index[permuted_old_action]
-
 
     #
     #   Evade bomb, if on bomb
@@ -299,6 +300,9 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                                          enemy_instead_of_coin=use_enemy
                                          )[0]
 
+    new_state_index = update_index_including_bomb_evade_index(new_state_index, new_game_state)
+  
+
 #    if is_bomb_under_players_feet(new_game_state):
 #        new_state_index = len(self.Q) - BOMB_EVADE_STATES + compute_evade_bomb_index(new_game_state)
 
@@ -318,39 +322,39 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
             events.append("IN_DANGER")
 
 
-    #if is_bomb_under_players_feet(old_game_state):
-        #self.logger.debug("BOMB_DROPPED ...")
+    if is_bomb_under_players_feet(old_game_state):
+        self.logger.debug("BOMB_DROPPED ...")
         #print(f"bomb dropped: self_action chosen {self_action}")
-        #if can_escape_left(old_game_state) == 1 and old_agent_pos[0] == new_agent_pos[0] + 1:
-            #events.append(e.CHOSE_GOOD_ESCAPE)
+        if can_escape_left(old_game_state) == 1 and old_agent_pos[0] == new_agent_pos[0] + 1:
+            events.append(e.CHOSE_GOOD_ESCAPE)
             #self.logger.debug("CHOSE_GOOD_ESCAPE")
             #print("CHOSE_GOOD_ESCAPE")
-        #elif can_escape_right(old_game_state) == 1 and old_agent_pos[0] == new_agent_pos[0] - 1:
-            #events.append(e.CHOSE_GOOD_ESCAPE)
+        elif can_escape_right(old_game_state) == 1 and old_agent_pos[0] == new_agent_pos[0] - 1:
+            events.append(e.CHOSE_GOOD_ESCAPE)
             #self.logger.debug("CHOSE_GOOD_ESCAPE")
             #print("CHOSE_GOOD_ESCAPE")
-        #elif can_escape_down(old_game_state) == 1 and 0 and old_agent_pos[1] == new_agent_pos[1] - 1:
-            #events.append(e.CHOSE_GOOD_ESCAPE)
+        elif can_escape_down(old_game_state) == 1 and 0 and old_agent_pos[1] == new_agent_pos[1] - 1:
+            events.append(e.CHOSE_GOOD_ESCAPE)
             #self.logger.debug("CHOSE_GOOD_ESCAPE")
             #print("CHOSE_GOOD_ESCAPE")
-        #elif can_escape_up(old_game_state) == 1 and 0 and old_agent_pos[1] == new_agent_pos[1] + 1:
-            #events.append(e.CHOSE_GOOD_ESCAPE)
+        elif can_escape_up(old_game_state) == 1 and 0 and old_agent_pos[1] == new_agent_pos[1] + 1:
+            events.append(e.CHOSE_GOOD_ESCAPE)
             #self.logger.debug("CHOSE_GOOD_ESCAPE")
             #print("CHOSE_GOOD_ESCAPE")
-        #elif can_escape_left(old_game_state) == 0 and old_agent_pos[0] == new_agent_pos[0] + 1:
-            #events.append(e.CHOSE_BAD_ESCAPE)
+        elif can_escape_left(old_game_state) == 0 and old_agent_pos[0] == new_agent_pos[0] + 1:
+            events.append(e.CHOSE_BAD_ESCAPE)
             #self.logger.debug("CHOSE_BAD_ESCAPE")
             #print("CHOSE_BAD_ESCAPE")
-        #elif can_escape_right(old_game_state) == 0 and old_agent_pos[0] == new_agent_pos[0] - 1:
-            #events.append(e.CHOSE_BAD_ESCAPE)
+        elif can_escape_right(old_game_state) == 0 and old_agent_pos[0] == new_agent_pos[0] - 1:
+            events.append(e.CHOSE_BAD_ESCAPE)
             #self.logger.debug("CHOSE_BAD_ESCAPE")
             #print("CHOSE_BAD_ESCAPE")
-        #elif can_escape_down(old_game_state) == 0 and old_agent_pos[1] == new_agent_pos[1] - 1:
-            #events.append(e.CHOSE_BAD_ESCAPE)
+        elif can_escape_down(old_game_state) == 0 and old_agent_pos[1] == new_agent_pos[1] - 1:
+            events.append(e.CHOSE_BAD_ESCAPE)
             #self.logger.debug("CHOSE_BAD_ESCAPE")
             #print("CHOSE_BAD_ESCAPE")
-        #elif can_escape_up(old_game_state) == 0 and old_agent_pos[1] == new_agent_pos[1] + 1:
-            #events.append(e.CHOSE_BAD_ESCAPE)
+        elif can_escape_up(old_game_state) == 0 and old_agent_pos[1] == new_agent_pos[1] + 1:
+            events.append(e.CHOSE_BAD_ESCAPE)
             #self.logger.debug("CHOSE_BAD_ESCAPE")
             #print("CHOSE_BAD_ESCAPE")
 
@@ -561,6 +565,8 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
                                                         include_crates=True,
                                                         enemy_instead_of_coin=use_enemy)
 
+    last_state_index = update_index_including_bomb_evade_index(last_state_index, last_game_state)
+
     permuted_last_action = aux.apply_permutations(last_action, permutations)
     last_action_index = action_to_index[permuted_last_action]
 
@@ -648,7 +654,7 @@ def reward_from_events(self, events: List[str]) -> int:
         e.BOMB_DROPPED_AWAY_FROM_CRATE: -60,
         e.TOUCHED_ENEMY: 50,
         e.KILLED_OPPONENT: 800,
-        e.CHOSE_GOOD_ESCAPE: 0.2,
+        e.CHOSE_GOOD_ESCAPE: 5.0,
         #e.CHOSE_BAD_ESCAPE: -4,
         #e.STEPPED_TOWARDS_BOMB: -1.2,
         #e.STEPPED_AWAY_FROM_BOMB: 1

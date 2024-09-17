@@ -89,7 +89,7 @@ def setup(self):
         global STATES_QUARTER
         STATES_QUARTER = nr_states
         
-        #nr_states *= 5
+        nr_states *= 5
         shape = (nr_states, len(ACTIONS))
         self.logger.debug(f"New model has dimensions {shape}")
         self.Q = np.random.random(shape).astype(np.float16)
@@ -190,7 +190,7 @@ def act(self, game_state: dict) -> str:
     
     
     
-    #index = update_index_including_bomb_evade_index(index, game_state)
+    index = update_index_including_bomb_evade_index(index, game_state)
     
     
     
@@ -401,11 +401,12 @@ def can_escape_left(game_state):
 
     field = game_state["field"]
     
-    #bomb_pos = find_closest_bomb(game_state)[0]
-    #agent_bomb_pos_dist_x = abs(bomb_pos[0] - agent_pos[0])
-    #end = 4 - agent_bomb_pos_dist_x
+    bomb_pos = find_closest_bomb(game_state)[0]
+    agent_bomb_pos_dist_x = abs(bomb_pos[0] - agent_pos[0])
+    end = 4 - agent_bomb_pos_dist_x
     
-    for i in range(1, 4):
+    
+    for i in range(1, end):
 
         # check for out of bounds
         if ag_x - i < 0 or ag_x - i >= ROWS:
@@ -444,7 +445,11 @@ def can_escape_right(game_state):
 
     field = game_state["field"]
 
-    for i in range(1, 4):
+    bomb_pos = find_closest_bomb(game_state)[0]
+    agent_bomb_pos_dist_x = abs(bomb_pos[0] - agent_pos[0])
+    end = 4 - agent_bomb_pos_dist_x
+    
+    for i in range(1, end):
 
         # check for out of bounds
         if ag_x + i < 0 or ag_x + i >= ROWS:
@@ -483,7 +488,11 @@ def can_escape_up(game_state):
 
     field = game_state["field"]
 
-    for i in range(1, 4):
+    bomb_pos = find_closest_bomb(game_state)[0]
+    agent_bomb_pos_dist_x = abs(bomb_pos[1] - agent_pos[1])
+    end = 4 - agent_bomb_pos_dist_x
+    
+    for i in range(1, end):
 
         # check for out of bounds
         if ag_y - i < 0 or ag_y - i >= COLS:
@@ -522,7 +531,11 @@ def can_escape_down(game_state):
 
     field = game_state["field"]
 
-    for i in range(1, 4):
+    bomb_pos = find_closest_bomb(game_state)[0]
+    agent_bomb_pos_dist_x = abs(bomb_pos[1] - agent_pos[1])
+    end = 4 - agent_bomb_pos_dist_x
+    
+    for i in range(1, end):
 
         # check for out of bounds
         if ag_y + i < 0 or ag_y + i >= COLS:
