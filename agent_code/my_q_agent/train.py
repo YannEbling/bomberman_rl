@@ -88,7 +88,7 @@ cells = pow((COLS - 2), 2)
 # Execution Time Analysis
 
 # Saving data every round is costly, save only every n rounds
-SAVE_INTERVAL = 1000
+SAVE_INTERVAL = 100
 save_counter = 0
 
 # This function and the VALID_POSITIONS are necessary to perform the sped up training, looping over all possible
@@ -181,7 +181,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     old_possible_closest_coin_index = aux.index_of_closest_item(old_agent_pos, old_game_state['coins'])
     old_possible_closest_bomb_index = aux.index_of_closest_item(old_agent_pos, [custom_bomb_state[k][0] for k in
                                                                                 range(len(custom_bomb_state))])
-
+    old_closest_enemy_index = aux.index_of_closest_item(old_agent_pos, [old_game_state['others'][k][3] for k in range(len(old_game_state['others']))])
         
     # 0 <= state_index < 790.128
     old_state_index, permutations = aux.state_to_index(game_state=old_game_state,
@@ -311,18 +311,54 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     old_possible_closest_crate = find_closest_crate(old_game_state)
     self.logger.debug(f"TR: old crate pos: {old_possible_closest_crate}")
     self.logger.debug(f"TR: old agent pos: {old_agent_pos}")
-    if old_possible_closest_crate is not None:
-        for event in events:
-            if event == e.BOMB_DROPPED:
+    for event in events:
+        if event == e.BOMB_DROPPED:
+            old_closest_enemy_pos = old_game_state['others'][old_closest_enemy_index][3]
+            dist_to_closest_enemy = math.sqrt(pow((old_closest_enemy_pos[0] - old_agent_pos[0]), 2) + pow((old_closest_enemy_pos[1] - old_agent_pos[1]), 2))
+            if dist_to_closest_enemy <= 1.01:
+                events.append(e.BOMB_DROPPED_NEXT_TO_ENEMY)
+                self.logger.debug("TR: BOMB_DROPPED_NEXT_TO_ENEMY")
+                print("TR: BOMB_DROPPED_NEXT_TO_ENEMY")
+            elif old_possible_closest_crate is not None:
                 dist_to_crate = math.sqrt(pow((old_possible_closest_crate[0] - old_agent_pos[0]), 2) + pow((old_possible_closest_crate[1] - old_agent_pos[1]), 2))
                 if dist_to_crate <= 1.01:
                     events.append(e.BOMB_DROPPED_NEXT_TO_CRATE)
                     self.logger.debug("TR: BOMB_DROPPED_NEXT_TO_CRATE")
+                    print("TR: BOMB_DROPPED_NEXT_TO_CRATE")
+                    print(old_state_index)
                 else:
                     events.append(e.BOMB_DROPPED_AWAY_FROM_CRATE)
                     self.logger.debug("TR: BOMB_DROPPED_AWAY_FROM_CRATE")
+                    print("TR: BOMB_DROPPED_AWAY_FROM_CRATE")
+                    print(old_state_index)
+            else:
+                events.append(e.BOMB_DROPPED_AWAY_FROM_CRATE)
+                self.logger.debug("TR: BOMB_DROPPED_AWAY_FROM_CRATE - No crates left on map")
+                print("TR: BOMB_DROPPED_AWAY_FROM_CRATE - No crates left on map")
 
 
+    #
+    #   Custom event: Stepped away from bomb
+    #
+
+    if old_possible_closest_bomb_index != None:
+        #print(f"old_agent_pos: {old_agent_pos}")
+        #print(f"new_agent_pos: {new_agent_pos}")
+
+        old_closest_bomb = custom_bomb_state[old_possible_closest_bomb_index]
+        old_dist_to_bomb = math.sqrt(pow((old_closest_bomb[0][0] - old_agent_pos[0]), 2) + pow((old_closest_bomb[0][1] - old_agent_pos[1]), 2))
+        new_dist_to_bomb = math.sqrt(pow((old_closest_bomb[0][0] - new_agent_pos[0]), 2) + pow((old_closest_bomb[0][1] - new_agent_pos[1]), 2))
+
+        print(f"old_dist_to_bomb: {old_dist_to_bomb}")
+        print(f"new_dist_to_bomb: {new_dist_to_bomb}")
+
+        if new_dist_to_bomb > old_dist_to_bomb and new_dist_to_bomb < 4.0:
+            print("stepped away from bomb")
+            events.append(e.STEPPED_AWAY_FROM_BOMB)
+
+        elif new_dist_to_bomb <= old_dist_to_bomb and new_dist_to_bomb < 4.0:
+            print("stepped towards bomb")
+            events.append(e.STEPPED_TOWARDS_BOMB)
 
 
 
@@ -332,12 +368,19 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     reward = reward_from_events(self, events)
     argmax = np.argmax( self.Q[new_state_index] )
     
+    print(reward)
+
     factor1 = ( 1.0 - ALPHA ) * self.Q[old_state_index][old_action_index]
     factor2 = GAMMA * self.Q[new_state_index][argmax]
     factor3 = ALPHA * ( reward + factor2 )
     #factor2 = ALPHA * reward
     #factor3 = ALPHA * GAMMA * np.argmax( self.Q[new_state_index] )
     new_value = factor1 + factor3
+
+
+    print(f"tr old_state_index {old_state_index}")
+
+
 
     #self.logger.debug(f"np.argmax: {np.argmax(self.Q[new_state_index])}")
     #self.logger.debug(f"np.argmax value: {self.Q[new_state_index][argmax]}")
@@ -349,9 +392,19 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #self.logger.debug(f"old q value before update: {self.Q[old_state_index][old_action_index]}")
     #self.logger.debug(f"new q value: {new_value}")
     self.logger.debug(f"TR: reward: {reward}")
-    
+
+
+    if e.BOMB_DROPPED in events:
+        print(f"old self.Q {self.Q[old_state_index]}")
+
     # set new value
     self.Q[old_state_index][old_action_index] = new_value
+
+    if e.BOMB_DROPPED in events:
+        print(f"new self.Q {self.Q[old_state_index]}")
+
+    if e.BOMB_DROPPED in events:
+        print(f"closest crate {old_possible_closest_crate}")
 
     self.logger.debug(f"TR: new q after update: {self.Q[old_state_index]}")
 
@@ -426,6 +479,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
     #training_time = time.time()
 
+
     global round_in_game
     round_in_game = round_in_game  + 1
     self.logger.debug(f"TR: round: {round_in_game}")
@@ -462,9 +516,13 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
                                                         include_bombs=True,
                                                         include_crates=True)
 
+    print(f"last self.Q before update {self.Q[last_state_index]}")
+
     permuted_last_action = aux.apply_permutations(last_action, permutations)
     last_action_index = action_to_index[permuted_last_action]
 
+
+    print(permuted_last_action)
     #
     #   Update Q-value of state-action tupel
     #
@@ -477,6 +535,8 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     new_value = factor1 + factor3
 
     self.Q[last_state_index][last_action_index] = new_value
+
+    print(f"last self.Q after update {self.Q[last_state_index]}")
     #
     #   Update Q-value of state-action tupel
     #
@@ -553,25 +613,26 @@ def reward_from_events(self, events: List[str]) -> int:
     
     
     game_rewards = {
-        e.COIN_COLLECTED: 15,
+        e.COIN_COLLECTED: 30,
         #e.KILLED_OPPONENT: 5,
-        e.WAITED: -0.8,
-        e.INVALID_ACTION: -5,
-        e.MOVED_RIGHT: -0.2,
-        e.MOVED_UP: -0.2,
-        e.MOVED_DOWN: -0.2,
-        e.MOVED_LEFT: -0.2,
+        e.WAITED: -0.4,
+        e.INVALID_ACTION: -3,
+        #e.MOVED_RIGHT: -0.2,
+        #e.MOVED_UP: -0.2,
+        #e.MOVED_DOWN: -0.2,
+        #e.MOVED_LEFT: -0.2,
         #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
-        "IN_DANGER": -5,
-        "OUT_DANGER": 3,
-        e.KILLED_SELF: -50,
-        e.GOT_KILLED: -50,
-        e.BOMB_DROPPED_NEXT_TO_CRATE: 3,  # no guarantee, that the reward is sufficient
-        e.BOMB_DROPPED_AWAY_FROM_CRATE: -6,
+        "IN_DANGER": -10,
+        "OUT_DANGER": 8,
+        e.KILLED_SELF: -100,
+        e.GOT_KILLED: -100,
+        e.BOMB_DROPPED_NEXT_TO_CRATE: 50,  # no guarantee, that the reward is sufficient
+        e.BOMB_DROPPED_AWAY_FROM_CRATE: -60,
+        e.BOMB_DROPPED_NEXT_TO_ENEMY: 80,
         #e.CHOSE_GOOD_ESCAPE: 3,
         #e.CHOSE_BAD_ESCAPE: -4,
-        #e.STEPPED_TOWARDS_BOMB: -1.2,
-        #e.STEPPED_AWAY_FROM_BOMB: 1
+        e.STEPPED_TOWARDS_BOMB: -4,
+        e.STEPPED_AWAY_FROM_BOMB: 3
     }
     reward_sum = 0
     for event in events:

@@ -18,7 +18,7 @@ cells = pow((COLS - 2), 2)
 n = COLS - 1
 assert COLS == ROWS
 
-RANDOM_ACTION = .15
+RANDOM_ACTION = .10
 
 custom_bomb_state = []
 BOMB_EVADE_STATES = 16
@@ -125,6 +125,7 @@ def act(self, game_state: dict) -> str:
     # todo Exploration vs exploitation
     if self.train and random.random() < RANDOM_ACTION:
     #if random.random() < RANDOM_ACTION:
+        print("random action")
         self.logger.debug("CB: Choosing action purely at random.")
         return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
         #return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
@@ -163,6 +164,8 @@ def act(self, game_state: dict) -> str:
 
    
     #---
+    print(f"state index {index}")
+    print(action_chosen)
     return action_chosen
 
 def update_custom_bomb_state(game_state):
