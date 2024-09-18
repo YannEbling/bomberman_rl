@@ -183,32 +183,40 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                                                                                 range(len(custom_bomb_state))])
 
     old_closest_enemy_index = aux.index_of_closest_item(old_agent_pos, [old_game_state['others'][k][3] for k in range(len(old_game_state['others']))])
-        
-    enemy_pos = old_game_state['others'][old_closest_enemy_index][3]
-    use_enemy = False
-    if old_possible_closest_coin_index != None:
-        coin_pos = old_game_state['coins'][old_possible_closest_coin_index]
-        dist_to_coin = math.sqrt(pow((coin_pos[0] - old_agent_pos[0]), 2) + pow((coin_pos[1] - old_agent_pos[1]), 2))
-        dist_to_enemy = math.sqrt(pow((enemy_pos[0] - old_agent_pos[0]), 2) + pow((enemy_pos[1] - old_agent_pos[1]), 2))
-        if dist_to_enemy < dist_to_coin:
-            use_enemy = True
+    
+    old_use_enemy = False
+    old_use_crate = False
+    old_closest_crate = None
+    old_enemy_pos = None
+
+    if old_closest_enemy_index != None:
+        old_enemy_pos = old_game_state['others'][old_closest_enemy_index][3]
+        if old_possible_closest_coin_index != None:
+            coin_pos = old_game_state['coins'][old_possible_closest_coin_index]
+            dist_to_coin = math.sqrt(pow((coin_pos[0] - old_agent_pos[0]), 2) + pow((coin_pos[1] - old_agent_pos[1]), 2))
+            dist_to_enemy = math.sqrt(pow((old_enemy_pos[0] - old_agent_pos[0]), 2) + pow((old_enemy_pos[1] - old_agent_pos[1]), 2))
+            if dist_to_enemy < dist_to_coin:
+                old_use_enemy = True
+                old_possible_closest_coin_index = old_closest_enemy_index
+            
+            #print("")
+            #print("coin")
+            #print(coin_pos)
+            #print(dist_to_coin)
+            #print("enemy")
+            #print(old_enemy_pos)
+            #print(dist_to_enemy)
+            
+        else:
             old_possible_closest_coin_index = old_closest_enemy_index
-        
-        #print("")
-        #print("coin")
-        #print(coin_pos)
-        #print(dist_to_coin)
-        #print("enemy")
-        #print(enemy_pos)
-        #print(dist_to_enemy)
-        
-    else:
-        old_possible_closest_coin_index = old_closest_enemy_index
-        use_enemy = True
-        
-    if e.KILLED_OPPONENT in events:
-        #print("opponent killed!")
-        pass
+            old_use_enemy = True
+            
+        if e.KILLED_OPPONENT in events:
+            #print("opponent killed!")
+            pass
+    elif old_possible_closest_coin_index == None:
+        old_closest_crate = find_closest_crate(old_game_state)
+        old_use_crate = True
         
     # 0 <= state_index < 790.128
     old_state_index, permutations = aux.state_to_index(game_state=old_game_state,
@@ -218,7 +226,9 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                                                        dim_reduce=True,
                                                        include_bombs=True,
                                                        include_crates=True,
-                                                       enemy_instead_of_coin=use_enemy)
+                                                       enemy_instead_of_coin=old_use_enemy, 
+                                                       crate=old_closest_crate, 
+                                                       crate_instead_of_coin_or_enemy=old_use_crate)
     
     old_state_index = update_index_including_bomb_evade_index(old_state_index, old_game_state)
     
@@ -268,27 +278,35 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     new_closest_enemy_index = aux.index_of_closest_item(new_agent_pos, [new_game_state['others'][k][3] for k in range(len(new_game_state['others']))])
         
     
-    use_enemy = False
-    if new_possible_closest_coin_index != None and new_closest_enemy_index != None:
-        enemy_pos = new_game_state['others'][new_closest_enemy_index][3]
-        coin_pos = new_game_state['coins'][new_possible_closest_coin_index]
-        dist_to_coin = math.sqrt(pow((coin_pos[0] - new_agent_pos[0]), 2) + pow((coin_pos[1] - new_agent_pos[1]), 2))
-        dist_to_enemy = math.sqrt(pow((enemy_pos[0] - new_agent_pos[0]), 2) + pow((enemy_pos[1] - new_agent_pos[1]), 2))
-        if dist_to_enemy < dist_to_coin:
-            use_enemy = True
+    new_use_enemy = False
+    new_use_crate = False
+    new_closest_crate = None
+    new_enemy_pos = None
+    
+    if new_closest_enemy_index != None:
+        new_enemy_pos = new_game_state['others'][new_closest_enemy_index][3]
+        if new_possible_closest_coin_index != None:
+            coin_pos = new_game_state['coins'][new_possible_closest_coin_index]
+            dist_to_coin = math.sqrt(pow((coin_pos[0] - new_agent_pos[0]), 2) + pow((coin_pos[1] - new_agent_pos[1]), 2))
+            dist_to_enemy = math.sqrt(pow((new_enemy_pos[0] - new_agent_pos[0]), 2) + pow((new_enemy_pos[1] - new_agent_pos[1]), 2))
+            if dist_to_enemy < dist_to_coin:
+                new_use_enemy = True
+                new_possible_closest_coin_index = new_closest_enemy_index
+            
+            #print("")
+            #print("coin")
+            #print(coin_pos)
+            #print(dist_to_coin)
+            #print("enemy")
+            #print(new_enemy_pos)
+            #print(dist_to_enemy)
+            
+        else:
             new_possible_closest_coin_index = new_closest_enemy_index
-        
-        #print("")
-        #print("coin")
-        #print(coin_pos)
-        #print(dist_to_coin)
-        #print("enemy")
-        #print(enemy_pos)
-        #print(dist_to_enemy)
-        
-    else:
-        new_possible_closest_coin_index = new_closest_enemy_index
-        use_enemy = True
+            new_use_enemy = True
+    elif new_possible_closest_coin_index == None:
+        new_closest_crate = find_closest_crate(new_game_state)
+        new_use_crate = True
     
     # 0 <= state_index <= 790.128
     new_state_index = aux.state_to_index(game_state=new_game_state,
@@ -298,7 +316,9 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
                                          dim_reduce=True,
                                          include_bombs=True,
                                          include_crates=True,
-                                         enemy_instead_of_coin=use_enemy
+                                         enemy_instead_of_coin=new_use_enemy, 
+                                         crate=new_closest_crate, 
+                                         crate_instead_of_coin_or_enemy=new_use_crate
                                          )[0]
 
     new_state_index = update_index_including_bomb_evade_index(new_state_index, new_game_state)
@@ -380,11 +400,11 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
 
 
-    
-    dist_to_enemy = math.sqrt(pow((enemy_pos[0] - new_agent_pos[0]), 2) + pow((enemy_pos[1] - new_agent_pos[1]), 2))
-    if dist_to_enemy < 1.01 and use_enemy:
-        print("touched enemy!")
-        events.append(e.TOUCHED_ENEMY)
+    if old_enemy_pos != None:
+        dist_to_enemy = math.sqrt(pow((old_enemy_pos[0] - new_agent_pos[0]), 2) + pow((old_enemy_pos[1] - new_agent_pos[1]), 2))
+        if dist_to_enemy < 1.01 and old_use_enemy:
+            print("touched enemy!")
+            events.append(e.TOUCHED_ENEMY)
 
     with open("output.txt", "a") as file:
         output = f"old_q: {self.Q[old_state_index]}"
@@ -394,6 +414,12 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     if e.BOMB_EXPLODED in events:
         events.append(e.SURVIVED_BOMB_EXPLOSION)
     
+    if e.BOMB_DROPPED in events:
+        if old_enemy_pos != None:
+            bomb_dropped_dist_to_enemy = math.sqrt(pow((old_enemy_pos[0] - old_agent_pos[0]), 2) + pow((old_enemy_pos[1] - old_agent_pos[1]), 2))
+            if bomb_dropped_dist_to_enemy <= 1:
+                events.append(e.BOMB_DROPPED_NEXT_TO_ENEMY)
+                print("bomb dropped next to enemy agent!")
     
     #
     #   Update Q-value of state-action tupel
@@ -544,28 +570,36 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
 
     last_closest_enemy_index = aux.index_of_closest_item(last_agent_pos, [last_game_state['others'][k][3] for k in range(len(last_game_state['others']))])
-        
-    enemy_pos = last_game_state['others'][last_closest_enemy_index][3]
-    use_enemy = False
-    if possible_closest_coin_index != None:
-        coin_pos = last_game_state['coins'][possible_closest_coin_index]
-        dist_to_coin = math.sqrt(pow((coin_pos[0] - last_agent_pos[0]), 2) + pow((coin_pos[1] - last_agent_pos[1]), 2))
-        dist_to_enemy = math.sqrt(pow((enemy_pos[0] - last_agent_pos[0]), 2) + pow((enemy_pos[1] - last_agent_pos[1]), 2))
-        if dist_to_enemy < dist_to_coin:
-            use_enemy = True
+
+    last_use_enemy = False
+    last_use_crate = False
+    last_closest_crate = None
+    last_enemy_pos = None
+    
+    if last_closest_enemy_index != None:
+        last_enemy_pos = last_game_state['others'][last_closest_enemy_index][3]
+        if possible_closest_coin_index != None:
+            coin_pos = last_game_state['coins'][possible_closest_coin_index]
+            dist_to_coin = math.sqrt(pow((coin_pos[0] - last_agent_pos[0]), 2) + pow((coin_pos[1] - last_agent_pos[1]), 2))
+            dist_to_enemy = math.sqrt(pow((last_enemy_pos[0] - last_agent_pos[0]), 2) + pow((last_enemy_pos[1] - last_agent_pos[1]), 2))
+            if dist_to_enemy < dist_to_coin:
+                last_use_enemy = True
+                possible_closest_coin_index = last_closest_enemy_index
+            
+            #print("")
+            #print("coin")
+            #print(coin_pos)
+            #print(dist_to_coin)
+            #print("enemy")
+            #print(last_enemy_pos)
+            #print(dist_to_enemy)
+            
+        else:
             possible_closest_coin_index = last_closest_enemy_index
-        
-        #print("")
-        #print("coin")
-        #print(coin_pos)
-        #print(dist_to_coin)
-        #print("enemy")
-        #print(enemy_pos)
-        #print(dist_to_enemy)
-        
-    else:
-        possible_closest_coin_index = last_closest_enemy_index
-        use_enemy = True
+            last_use_enemy = True
+    elif possible_closest_coin_index == None:
+        last_closest_crate = find_closest_crate(last_game_state)
+        last_use_crate = True
     
     # 0 <= state_index < 790.128
     last_state_index, permutations = aux.state_to_index(game_state=last_game_state,
@@ -575,7 +609,9 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
                                                         dim_reduce=True,
                                                         include_bombs=True,
                                                         include_crates=True,
-                                                        enemy_instead_of_coin=use_enemy)
+                                                        enemy_instead_of_coin=last_use_enemy,
+                                                        crate=last_closest_crate, 
+                                                        crate_instead_of_coin_or_enemy=last_use_crate)
 
     last_state_index = update_index_including_bomb_evade_index(last_state_index, last_game_state)
 
@@ -700,7 +736,8 @@ def reward_from_events(self, events: List[str]) -> int:
         e.KILLED_OPPONENT: 800,
         e.CHOSE_GOOD_ESCAPE: 20.0,
         e.CHOSE_BAD_ESCAPE: -20.0,
-        e.SURVIVED_BOMB_EXPLOSION: 80,
+        e.BOMB_DROPPED_NEXT_TO_ENEMY: 100,
+        #e.SURVIVED_BOMB_EXPLOSION: 80,
         #e.STEPPED_TOWARDS_BOMB: -1.2,
         #e.STEPPED_AWAY_FROM_BOMB: 1
     }

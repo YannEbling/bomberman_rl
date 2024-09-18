@@ -158,48 +158,51 @@ def act(self, game_state: dict) -> str:
     
     closest_enemy_index = aux.index_of_closest_item(agent_pos, [game_state['others'][k][3] for k in range(len(game_state['others']))])
         
-    enemy_pos = game_state['others'][closest_enemy_index][3]
     use_enemy = False
-    if coin_index != None:
-        coin_pos = game_state['coins'][coin_index]
-        dist_to_coin = math.sqrt(pow((coin_pos[0] - agent_pos[0]), 2) + pow((coin_pos[1] - agent_pos[1]), 2))
-        dist_to_enemy = math.sqrt(pow((enemy_pos[0] - agent_pos[0]), 2) + pow((enemy_pos[1] - agent_pos[1]), 2))
-        if dist_to_enemy < dist_to_coin:
-            use_enemy = True
+    use_crate = False
+    closest_crate = None
+    
+    if closest_enemy_index != None:
+        enemy_pos = game_state['others'][closest_enemy_index][3]
+        if coin_index != None:
+            coin_pos = game_state['coins'][coin_index]
+            dist_to_coin = math.sqrt(pow((coin_pos[0] - agent_pos[0]), 2) + pow((coin_pos[1] - agent_pos[1]), 2))
+            dist_to_enemy = math.sqrt(pow((enemy_pos[0] - agent_pos[0]), 2) + pow((enemy_pos[1] - agent_pos[1]), 2))
+            if dist_to_enemy < dist_to_coin:
+                use_enemy = True
+                coin_index = closest_enemy_index
+            
+            #print("")
+            #print("coin")
+            #print(coin_pos)
+            #print(dist_to_coin)
+            #print("enemy")
+            #print(enemy_pos)
+            #print(dist_to_enemy)
+            
+        else:
             coin_index = closest_enemy_index
+            use_enemy = True
+    elif coin_index == None:
+        closest_crate = find_closest_crate(game_state)
+        use_crate = True
         
-        #print("")
-        #print("coin")
-        #print(coin_pos)
-        #print(dist_to_coin)
-        #print("enemy")
-        #print(enemy_pos)
-        #print(dist_to_enemy)
         
-    else:
-        coin_index = closest_enemy_index
-        use_enemy = True
     
+    index, permutations = aux.state_to_index(game_state, 
+                                            custom_bomb_state, 
+                                            coin_index=coin_index, 
+                                            bomb_index=bomb_index,
+                                            dim_reduce=True, 
+                                            include_bombs=True, 
+                                            include_crates=True, 
+                                            enemy_instead_of_coin=use_enemy, 
+                                            crate=closest_crate, 
+                                            crate_instead_of_coin_or_enemy=use_crate)
     
-    
-    index, permutations = aux.state_to_index(game_state, custom_bomb_state, coin_index=coin_index, bomb_index=bomb_index,
-                                             dim_reduce=True, include_bombs=True, include_crates=True, enemy_instead_of_coin=use_enemy)
-    
-    
-    
-    
-    
-    
-    
+   
     
     index = update_index_including_bomb_evade_index(index, game_state)
-    
-    
-    
-    
-    
-    
-    
     
     
     action_index = np.argmax(self.Q[index])
