@@ -42,7 +42,9 @@ def index_of_closest_item(agent_position: tuple, item_positions: List[tuple]):
     return i_min
 
 
-def state_to_index(game_state: dict, custom_bomb_state, coin_index=None, bomb_index=None, dim_reduce=False, include_bombs=False, include_crates=False, enemy_instead_of_coin=False):
+def state_to_index(game_state: dict, custom_bomb_state, coin_index=None, bomb_index=None, dim_reduce=False, include_bombs=False, include_crates=False, enemy_instead_of_coin=False,
+                    crate=None, crate_instead_of_coin_or_enemy=False):
+    
     """
     This function is a bit messy and even if it would work, it would only be applicable for this very simple setup and
     can get very complicated. We should definitely look for a better feature extraction for more complex states.
@@ -55,8 +57,6 @@ def state_to_index(game_state: dict, custom_bomb_state, coin_index=None, bomb_in
     agent_position = game_state["self"][-1]
     if enemy_instead_of_coin:
         coin_position = game_state['others'][coin_index][3]
-        
-        
     else:
         if len(game_state["coins"]) != 0:
             if coin_index is None:  # if there is no coin_index given...
@@ -70,6 +70,8 @@ def state_to_index(game_state: dict, custom_bomb_state, coin_index=None, bomb_in
             # but the training should ignore the coin. The state needs to be numbered though, for which we need this extra
             # position, corresponding to the digit 0 in the index of the state.
 
+    if crate_instead_of_coin_or_enemy and crate != None:
+        coin_position = crate
 
     if include_bombs:
         if len(custom_bomb_state):
