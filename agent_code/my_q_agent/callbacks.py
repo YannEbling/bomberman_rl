@@ -8,7 +8,7 @@ import numpy as np
 
 from settings import *
 from main import *
-import auxiliary_functions as aux
+from . import auxiliary_functions as aux
 
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 #ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
@@ -26,6 +26,8 @@ BOMB_EVADE_STATES = 16
 STATES_QUARTER = 0
 
 def setup(self):
+
+
     """
     Setup your code. This is called once when loading each agent.
     Make sure that you prepare everything such that act(...) can be called.

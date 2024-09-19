@@ -27,7 +27,7 @@ import time
 from settings import *
 
 import os
-import auxiliary_functions as aux
+from . import auxiliary_functions as aux
 
 
 # -----------------------------------------------------------
@@ -419,8 +419,63 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
             bomb_dropped_dist_to_enemy = math.sqrt(pow((old_enemy_pos[0] - old_agent_pos[0]), 2) + pow((old_enemy_pos[1] - old_agent_pos[1]), 2))
             if bomb_dropped_dist_to_enemy <= 1:
                 events.append(e.BOMB_DROPPED_NEXT_TO_ENEMY)
-                print("bomb dropped next to enemy agent!")
+                #print("bomb dropped next to enemy agent!")
     
+
+
+    #
+    #   Custom Event:
+    #
+    if old_possible_closest_bomb_index == None or math.sqrt(pow((custom_bomb_state[old_possible_closest_bomb_index][0][0] - old_agent_pos[0]), 2) + pow((custom_bomb_state[old_possible_closest_bomb_index][0][1] - old_agent_pos[1]), 2)) > 4.01:
+        if old_use_crate:
+            if old_closest_crate != None:
+                old_di_ag_cr = math.sqrt(pow((old_possible_closest_crate[0] - old_agent_pos[0]), 2) + pow((old_possible_closest_crate[1] - old_agent_pos[1]), 2))
+                new_di_ag_cr = math.sqrt(pow((old_possible_closest_crate[0] - new_agent_pos[0]), 2) + pow((old_possible_closest_crate[1] - new_agent_pos[1]), 2))
+                if old_di_ag_cr > new_di_ag_cr:
+                    events.append(e.STEPPED_TOWARDS_POINT_OF_INTEREST)
+                    #print("STEPPED_TOWARDS_POINT_OF_INTEREST - crate")
+        elif old_use_enemy:
+            if old_enemy_pos != None:
+                old_di_ag_en = math.sqrt(pow((old_enemy_pos[0] - old_agent_pos[0]), 2) + pow((old_enemy_pos[1] - old_agent_pos[1]), 2))
+                new_di_ag_en = math.sqrt(pow((old_enemy_pos[0] - new_agent_pos[0]), 2) + pow((old_enemy_pos[1] - new_agent_pos[1]), 2))
+                if old_di_ag_en > new_di_ag_en:
+                    events.append(e.STEPPED_TOWARDS_POINT_OF_INTEREST)
+                    #print("STEPPED_TOWARDS_POINT_OF_INTEREST - enemy")
+        else:
+            if old_possible_closest_coin_index != None:
+                old_coin_pos = old_game_state['coins'][old_possible_closest_coin_index]
+                old_di_ag_co = math.sqrt(pow((old_coin_pos[0] - old_agent_pos[0]), 2) + pow((old_coin_pos[1] - old_agent_pos[1]), 2))
+                new_di_ag_co = math.sqrt(pow((old_coin_pos[0] - new_agent_pos[0]), 2) + pow((old_coin_pos[1] - new_agent_pos[1]), 2))
+                if old_di_ag_co > new_di_ag_co:
+                    events.append(e.STEPPED_TOWARDS_POINT_OF_INTEREST)
+                    #print("STEPPED_TOWARDS_POINT_OF_INTEREST - coin")
+
+
+    #
+    #   Custom event: Stepped away from bomb
+    #
+    if old_possible_closest_bomb_index != None:
+        old_closest_bomb = custom_bomb_state[old_possible_closest_bomb_index]
+        if old_closest_bomb != None:
+            #print(f"old_agent_pos: {old_agent_pos}")
+            #print(f"new_agent_pos: {new_agent_pos}")
+
+            old_dist_to_bomb = math.sqrt(pow((old_closest_bomb[0][0] - old_agent_pos[0]), 2) + pow((old_closest_bomb[0][1] - old_agent_pos[1]), 2))
+            new_dist_to_bomb = math.sqrt(pow((old_closest_bomb[0][0] - new_agent_pos[0]), 2) + pow((old_closest_bomb[0][1] - new_agent_pos[1]), 2))
+
+            #print(f"old_dist_to_bomb: {old_dist_to_bomb}")
+            #print(f"new_dist_to_bomb: {new_dist_to_bomb}")
+
+            if new_dist_to_bomb > old_dist_to_bomb:
+                #print("stepped away from bomb")
+                events.append(e.STEPPED_AWAY_FROM_BOMB)
+
+            elif new_dist_to_bomb < old_dist_to_bomb:
+                #print("stepped towards bomb")
+                events.append(e.STEPPED_TOWARDS_BOMB)
+
+
+
     #
     #   Update Q-value of state-action tupel
     #
@@ -620,7 +675,6 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
 
 
-
     with open("output.txt", "a") as file:
         output = f"""
         permutated action: {permuted_last_action}
@@ -630,7 +684,13 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         old_last_q: {self.Q[last_state_index]}
         """
         file.write(output)
-        
+
+
+
+
+
+
+
 
 
 
@@ -735,11 +795,12 @@ def reward_from_events(self, events: List[str]) -> int:
         e.TOUCHED_ENEMY: 50,
         e.KILLED_OPPONENT: 800,
         e.CHOSE_GOOD_ESCAPE: 20.0,
-        e.CHOSE_BAD_ESCAPE: -20.0,
+        e.CHOSE_BAD_ESCAPE: -25.0,
         e.BOMB_DROPPED_NEXT_TO_ENEMY: 100,
         #e.SURVIVED_BOMB_EXPLOSION: 80,
-        #e.STEPPED_TOWARDS_BOMB: -1.2,
-        #e.STEPPED_AWAY_FROM_BOMB: 1
+        e.STEPPED_TOWARDS_BOMB: -12,
+        e.STEPPED_AWAY_FROM_BOMB: 10,
+        e.STEPPED_TOWARDS_POINT_OF_INTEREST: 5,
     }
 
     reward_sum = 0
