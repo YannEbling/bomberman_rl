@@ -86,7 +86,7 @@ def setup(self):
         #nr_states += BOMB_EVADE_STATES
         shape = (nr_states, len(ACTIONS))
         self.logger.debug(f"New model has dimensions {shape}")
-        self.Q = np.random.random(shape)
+        self.Q = np.ones(shape=shape, dtype=np.float16)
         
     else:
         self.logger.info("Loading model from saved state.")
@@ -139,7 +139,19 @@ def act(self, game_state: dict) -> str:
 
 
     agent_pos = game_state["self"][3]
-    coin_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=game_state['coins'])
+    custom_coin_state = game_state['coins']
+    if not len(custom_coin_state):
+        if len(game_state['others']):
+            other_positions = [game_state['others'][k][-1] for k in range(len(game_state['others']))]
+            closest_agent = aux.index_of_closest_item(agent_position=agent_pos,
+                                                      item_positions=other_positions)
+            other_pos = game_state['others'][closest_agent][-1]
+            custom_coin_state.append(other_pos)
+        else:
+            crate_pos = find_closest_crate(game_state)
+            if crate_pos is not None:
+                custom_coin_state.append(crate_pos)
+    coin_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=custom_coin_state)
     bomb_positions = [bomb_attributes[0] for bomb_attributes in custom_bomb_state]
     bomb_index = aux.index_of_closest_item(agent_position=agent_pos, item_positions=bomb_positions)
     index, permutations = aux.state_to_index(game_state, custom_bomb_state, coin_index=coin_index, bomb_index=bomb_index,

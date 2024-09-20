@@ -31,6 +31,8 @@ def convert_pos(position_tuple: tuple, n, is_a_coin=False):
 def index_of_closest_item(agent_position: tuple, item_positions: List[tuple]):
     d_min = s.ROWS+s.COLS  # this is larger than every possible distance between agent and coin
     i_min = -1
+    if not len(item_positions):
+        return None
     for i in range(len(item_positions)):
         d = distance_from_item(agent_position, item_positions[i])
         if d < d_min:
@@ -128,10 +130,10 @@ def state_to_index(game_state: dict, custom_bomb_state, coin_index=None, bomb_in
 
         if include_crates:
             number_of_bomb_states = int((n - 1) ** 2 - (n / 2 - 1) ** 2) + 1  # this is the total number of valid positions
-            old_crate_up = int(game_state['field'][agent_position[0], agent_position[0] - 1] == 1)
-            old_crate_right = int(game_state['field'][agent_position[0] + 1, agent_position[0]] == 1)
-            old_crate_down = int(game_state['field'][agent_position[0], agent_position[0] + 1] == 1)
-            old_crate_left = int(game_state['field'][agent_position[0] - 1, agent_position[0]] == 1)
+            old_crate_up = int(game_state['field'][agent_position[0], agent_position[1] - 1] == 1)
+            old_crate_right = int(game_state['field'][agent_position[0] + 1, agent_position[1]] == 1)
+            old_crate_down = int(game_state['field'][agent_position[0], agent_position[1] + 1] == 1)
+            old_crate_left = int(game_state['field'][agent_position[0] - 1, agent_position[1]] == 1)
 
             # check if other agents are nearby (they are treated equal to crates)
             others_positions = [agent_attributes[-1] for agent_attributes in game_state['others']]  # gather the other

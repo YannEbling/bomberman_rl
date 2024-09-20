@@ -303,6 +303,10 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         if self_action != 'BOMB':
             events.append("IN_DANGER")
 
+    if old_in_danger and self_action in ['BOMB', 'WAIT']:
+        events.append('IDLE_IN_DANGER')
+    if old_in_danger and e.INVALID_ACTION in events:
+        events.append('INVALID_IN_DANGER')
 
     #
     #   Custom Event: Bomb placed directly at crate?
@@ -556,18 +560,21 @@ def reward_from_events(self, events: List[str]) -> int:
         e.COIN_COLLECTED: 15,
         #e.KILLED_OPPONENT: 5,
         e.WAITED: -0.8,
-        e.INVALID_ACTION: -5,
+        e.INVALID_ACTION: -2,
         e.MOVED_RIGHT: -0.2,
         e.MOVED_UP: -0.2,
         e.MOVED_DOWN: -0.2,
         e.MOVED_LEFT: -0.2,
         #PLACEHOLDER_EVENT: -.05  # idea: the custom event is bad
         "IN_DANGER": -5,
-        "OUT_DANGER": 3,
-        e.KILLED_SELF: -50,
-        e.GOT_KILLED: -50,
-        e.BOMB_DROPPED_NEXT_TO_CRATE: 3,  # no guarantee, that the reward is sufficient
-        e.BOMB_DROPPED_AWAY_FROM_CRATE: -6,
+        "OUT_DANGER": 5,
+        e.KILLED_SELF: -10,
+        e.GOT_KILLED: -10,
+        e.BOMB_DROPPED_NEXT_TO_CRATE: 5,  # no guarantee, that the reward is sufficient
+        e.BOMB_DROPPED_AWAY_FROM_CRATE: -4,
+        e.KILLED_OPPONENT: 1000,
+        'IDLE_IN_DANGER': -5,
+        'INVALID_IN_DANGER': -5
         #e.CHOSE_GOOD_ESCAPE: 3,
         #e.CHOSE_BAD_ESCAPE: -4,
         #e.STEPPED_TOWARDS_BOMB: -1.2,
