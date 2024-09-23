@@ -8,7 +8,7 @@ import numpy as np
 
 from settings import *
 from main import *
-import auxiliary_functions as aux
+from . import auxiliary_functions as aux
 
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 #ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
