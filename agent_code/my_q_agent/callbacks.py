@@ -11,7 +11,6 @@ from main import *
 from . import auxiliary_functions as aux
 
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
-#ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
 
 cols = (COLS - 2)
 cells = pow((COLS - 2), 2)
@@ -39,33 +38,14 @@ def setup(self):
     """
     
     #
-    #   Time Analysis
-    #
-
-    
-    #
     #   For Retraining Existing Model
     #
     if self.train and os.path.isfile("my-saved-model.pt"):
-        #print("Continue training model from saved state.")
         with open("my-saved-model.pt", "rb") as file:
             self.Q = pickle.load(file)
-            #print("TYPE OF LOADED MODEL: ", type(self.Q))
 
     elif self.train or not os.path.isfile("my-saved-model.pt"):
-    #if self.train or not os.path.isfile("my-saved-model.pt"):
         self.logger.info("Setting up model from scratch.")
-        #print("Setting up model from scratch.")
-        #weights = np.random.rand(len(ACTIONS))
-        #self.model = weights / weights.sum()
-        
-        # ---
-        
-        # for one coin scenario only 
-        #nr_states = pow(cells, 2)
-        #self.Q = [[random.uniform(0.0, 1.0) for _ in range(5)] for _ in range(nr_states)]
-        
-        # ---
 
         # Setting up the model using the dimension reduction
 
@@ -83,18 +63,14 @@ def setup(self):
         # on the board plus one for the case of no bomb on the board
         number_of_crate_states = 2**4
         nr_states = number_of_agent_states * number_of_bomb_states * number_of_coin_states * number_of_crate_states
-        #nr_states += BOMB_EVADE_STATES
         shape = (nr_states, len(ACTIONS))
         self.logger.debug(f"New model has dimensions {shape}")
         self.Q = np.ones(shape=shape, dtype=np.float16)
         
     else:
         self.logger.info("Loading model from saved state.")
-        #print("Loading model from saved state.")
         with open("my-saved-model.pt", "rb") as file:
             self.Q = pickle.load(file)
-            #print("TYPE OF LOADED MODEL: ", type(self.Q))
-
 
 def act(self, game_state: dict) -> str:
     """
@@ -106,38 +82,16 @@ def act(self, game_state: dict) -> str:
     :return: The action to take as a string.
     """
     
-    #
-    # to check, if q table is correctly saved and loaded
-    #
-    #for i in range(len(self.Q)):
-    #    self.logger.debug(f"Q {self.Q[i]}")
-    
-    
-    self.logger.debug("")
-    self.logger.debug("")
-    self.logger.debug("")
-
     # update custom bomb state tracker
     update_custom_bomb_state(game_state)
     
-    
-    
     # todo Exploration vs exploitation
     if self.train and random.random() < RANDOM_ACTION:
-    #if random.random() < RANDOM_ACTION:
         self.logger.debug("CB: Choosing action purely at random.")
         return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
-        #return np.random.choice(ACTIONS, p=[.25, .25, .25, .25, .0])
 
     self.logger.debug("CB: Querying model for action.")
     
-
-    
-    #---
-    # Get Q vector for current player position and coin position 
-    # 'self': (str, int, bool, (int, int))
-
-
     agent_pos = game_state["self"][3]
     custom_coin_state = game_state['coins']
     if not len(custom_coin_state):
@@ -160,21 +114,12 @@ def act(self, game_state: dict) -> str:
     permuted_action = ACTIONS[action_index]
     action_chosen = aux.revert_permutations(permuted_action, permutations)
 
-    #if is_bomb_under_players_feet(game_state):
-    #    index = len(self.Q) - BOMB_EVADE_STATES + compute_evade_bomb_index(game_state)
-    #    self.logger.debug(f"ON BOMB, INDEX: {index}")
-    #    action_index = np.argmax(self.Q[index])
-    #    action_chosen = ACTIONS[action_index]
-
     actions = self.Q[index]
 
     self.logger.debug(f"CB: Q[{index}]: {actions}")
     self.logger.debug(f"CB: Argmax-action of row is {permuted_action}")
     self.logger.debug(f"CB: Action chosen after reverting permutations {permutations}: {action_chosen}")
 
-
-   
-    #---
     return action_chosen
 
 def update_custom_bomb_state(game_state):

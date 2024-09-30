@@ -37,17 +37,16 @@ def merge(matrices):
     
     return mean_matrix
 
-
 def save(matrix, dir):
     with open(f"./agent_code/{dir}/my-saved-model.pt", "wb") as file:
         pickle.dump(matrix, file)
 
 def list_files(directory):
     try:
-        # Get a list of all files and directories in the specified directory
+        # list of files and dirs
         all_files_and_dirs = os.listdir(directory)
 
-        # Filter out directories, keeping only files
+        # list all files
         files = [f for f in all_files_and_dirs if os.path.isfile(os.path.join(directory, f))]
 
         return files
@@ -58,7 +57,6 @@ def list_files(directory):
         print(f"Error: Permission denied to access '{directory}'.")
         return []
 
-# argv[0] = number of files to read from
 def main(argv):
     # parse argv
     dir = argv[0]
