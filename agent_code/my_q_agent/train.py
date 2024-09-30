@@ -39,9 +39,6 @@ Transition = namedtuple('Transition',
 TRANSITION_HISTORY_SIZE = 3 # keep only ... last transitions
 RECORD_ENEMY_TRANSITIONS = 1.0  # record enemy transitions with probability ...
 
-# Events
-#PLACEHOLDER_EVENT = "PLACEHOLDER"
-
 # Custom
 
 # Learning rate alpha, 0.0 < alpha < 1.0
@@ -51,10 +48,8 @@ ALPHA = 0.4
 # Discount factor gamma, 0.0 < gamma < 1.0
 GAMMA = 0.7
 
-
 MyTransition = namedtuple('Transition', ('state', 'action'))
 MY_TRANSITION_HISTORY_SIZE = 40
-
 
 # Action to index
 action_to_index = {
@@ -93,18 +88,12 @@ def setup_training(self):
 
     :param self: This object is passed to all callbacks and you can set arbitrary values.
     """
-
-    
     
     # Example: Setup an array that will note transition tuples
     # (s, a, r, s')
     self.transitions = deque(maxlen=TRANSITION_HISTORY_SIZE)
     
-    #---
     self.mytransitions = deque(maxlen=MY_TRANSITION_HISTORY_SIZE)
-    
-
-
 
 def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_state: dict, events: List[str]):
     """
@@ -125,17 +114,9 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     """
     self.logger.debug(f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}')
 
-
-    # Idea: Add your own events to hand out rewards
-    #if ...:
-        #events.append(PLACEHOLDER_EVENT)
-
-
     # state_to_features is defined in callbacks.py
     self.transitions.append(Transition(state_to_features(old_game_state), self_action, state_to_features(new_game_state), reward_from_events(self, events)))
     
-
-
     #
     #
     #   ---   Compute State Index of old_game_state 
@@ -145,7 +126,6 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     old_agent_pos = old_game_state["self"][3]
     old_agent_pos_index = compute_agent_pos_index(old_agent_pos)
           
-        
     # coin, crate, bomb positions and indices
     old_closest_coin = find_closest_coin(old_game_state)
     old_closest_crate = find_closest_crate(old_game_state)
@@ -190,28 +170,21 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #   Compute Index
     new_state_index = compute_state_index(new_game_state, new_agent_pos_index, new_pull_index, new_bomb_pos_index, new_explosion_tile_index)
 
-
-
-
     #
     #   Custom Event: Bomb placed directly at crate?
     #
-
     for event in events:
         if event == e.BOMB_DROPPED:             
             dist_to_crate = math.sqrt(pow((old_closest_crate[0] - old_agent_pos[0]), 2) + pow((old_closest_crate[1] - old_agent_pos[1]), 2))
             if dist_to_crate <= 1.01:
                 events.append(e.BOMB_DROPPED_NEXT_TO_CRATE)
-                print("BOMB_DROPPED_NEXT_TO_CRATE")
                 self.logger.debug("BOMB_DROPPED_NEXT_TO_CRATE")
             else:
                 events.append(e.BOMB_DROPPED_AWAY_FROM_CRATE)
 
-
     #
     #   Custom Event: Survived a bomb -> SURVIVED_BOMB
     #
-
     # Add current bombs on the field, that are not already in the active bombs list, to the list
     # But add only the position tupel, for simplification
     for i in old_game_state["bombs"]:
@@ -228,7 +201,6 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     # If the agent is still alive at this point, give out reward
     for i in active_bombs:
         if i not in tmp:
-            print("survived a bomb!")
             active_bombs.remove(i)
             events.append(e.SURVIVED_BOMB)
             global bombs_survived
@@ -240,105 +212,46 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
     if is_bomb_under_players_feet(old_game_state):
         self.logger.debug("BOMB_DROPPED ...")
-        print("BOMB_DROPPED ...") 
-        print(can_escape_left(old_game_state))
-        print(can_escape_right(old_game_state))
-        print(can_escape_up(old_game_state))
-        print(can_escape_down(old_game_state))
-        print(self_action)
         if can_escape_left(old_game_state) == 1 and self_action == "LEFT":
             events.append(e.CHOSE_GOOD_ESCAPE)
             self.logger.debug("CHOSE_GOOD_ESCAPE")
-            print("CHOSE_GOOD_ESCAPE") 
         elif can_escape_right(old_game_state) == 1 and self_action == "RIGHT":
             events.append(e.CHOSE_GOOD_ESCAPE)
             self.logger.debug("CHOSE_GOOD_ESCAPE")
-            print("CHOSE_GOOD_ESCAPE") 
         elif can_escape_down(old_game_state) == 1 and self_action == "DOWN":
             events.append(e.CHOSE_GOOD_ESCAPE)
             self.logger.debug("CHOSE_GOOD_ESCAPE")
-            print("CHOSE_GOOD_ESCAPE") 
         elif can_escape_up(old_game_state) == 1 and self_action == "UP":
             events.append(e.CHOSE_GOOD_ESCAPE)
             self.logger.debug("CHOSE_GOOD_ESCAPE")
-            print("CHOSE_GOOD_ESCAPE") 
         elif can_escape_left(old_game_state) == 0 and self_action == "LEFT":
             events.append(e.CHOSE_BAD_ESCAPE)
             self.logger.debug("CHOSE_BAD_ESCAPE")
-            print("CHOSE_BAD_ESCAPE") 
         elif can_escape_right(old_game_state) == 0 and self_action == "RIGHT":
             events.append(e.CHOSE_BAD_ESCAPE)
             self.logger.debug("CHOSE_BAD_ESCAPE")
-            print("CHOSE_BAD_ESCAPE") 
         elif can_escape_down(old_game_state) == 0 and self_action == "DOWN":
             events.append(e.CHOSE_BAD_ESCAPE)
             self.logger.debug("CHOSE_BAD_ESCAPE")
-            print("CHOSE_BAD_ESCAPE") 
         elif can_escape_up(old_game_state) == 0 and self_action == "UP":
             events.append(e.CHOSE_BAD_ESCAPE)
             self.logger.debug("CHOSE_BAD_ESCAPE")
-            print("CHOSE_BAD_ESCAPE") 
         elif self_action == "WAIT":
             events.append(e.CHOSE_BAD_ESCAPE)
             self.logger.debug("CHOSE_BAD_ESCAPE")
-            print("CHOSE_BAD_ESCAPE") 
-            
 
     #
     #   Custom event: Stepped away from bomb
     #
-
     if old_closest_bomb != None:
-        #print(f"old_agent_pos: {old_agent_pos}")
-        #print(f"new_agent_pos: {new_agent_pos}")
-
         old_dist_to_bomb = math.sqrt(pow((old_closest_bomb[0][0] - old_agent_pos[0]), 2) + pow((old_closest_bomb[0][1] - old_agent_pos[1]), 2))
         new_dist_to_bomb = math.sqrt(pow((old_closest_bomb[0][0] - new_agent_pos[0]), 2) + pow((old_closest_bomb[0][1] - new_agent_pos[1]), 2))
 
-        print(f"old_dist_to_bomb: {old_dist_to_bomb}")
-        print(f"new_dist_to_bomb: {new_dist_to_bomb}")
-
         if new_dist_to_bomb > old_dist_to_bomb:
-            print("stepped away from bomb")
             events.append(e.STEPPED_AWAY_FROM_BOMB)
         
         elif new_dist_to_bomb < old_dist_to_bomb:
-            print("stepped towards bomb")
             events.append(e.STEPPED_TOWARDS_BOMB)
-
-
-    #
-    #   Custom Event: Too close to bomb -> IN_DANGER
-    #
-
-    #if old_closest_bomb != None:
-
-    #    dist_to_bomb = math.sqrt(pow((old_closest_bomb[0][0] - old_agent_pos[0]), 2) + pow((old_closest_bomb[0][1] - old_agent_pos[1]), 2))
-
-    #    x_aligned = False
-    #    if old_closest_bomb[0][0] == old_agent_pos[0]:
-    #        x_aligned = True
-
-    #    y_aligned = False
-    #    if old_closest_bomb[0][1] == old_agent_pos[1]:
-    #        y_aligned = True
-#
-    #    if (x_aligned or y_aligned) and dist_to_bomb <= 3:
-    #        events.append(e.IN_DANGER)
-    #        print("IN DANGER")
-        
-
-
-
-    
-    
-    #print(f"old_agent_pos: {old_agent_pos}")
-    #print(f"new_agent_pos: {new_agent_pos}")
-    #print(f"old_state_index: {old_state_index}")
-    #print(f"new_state_index: {new_state_index}")
-    #print(f"self_action: {self_action}")
-
-
 
     #
     #   Update Q-value of state-action tupel
@@ -349,33 +262,13 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     factor1 = ( 1.0 - ALPHA ) * self.Q[old_state_index][old_action_index]
     factor2 = GAMMA * self.Q[new_state_index][argmax]
     factor3 = ALPHA * ( reward + factor2 )
-    #factor2 = ALPHA * reward
-    #factor3 = ALPHA * GAMMA * np.argmax( self.Q[new_state_index] )
-    
-    #
-    #   Logging
-    #
-    #self.logger.debug(f"np.argmax: {np.argmax(self.Q[new_state_index])}")
-    #self.logger.debug(f"np.argmax value: {self.Q[new_state_index][argmax]}")
-    #self.logger.debug(f"factor1 :{factor1}")
-    #self.logger.debug(f"factor2 :{factor2}")
-    #self.logger.debug(f"factor3 :{factor3}")
-    #self.logger.debug(f"old q value before update: {self.Q[old_state_index][old_action_index]}")
     
     new_value = factor1 + factor3
-    #self.logger.debug(f"new q value: {new_value}")
-    #self.logger.debug(f"reward: {reward}")
     
     # set new value
     self.Q[old_state_index][old_action_index] = new_value
     
-    #self.logger.debug(f"new q value before update: {self.Q[old_state_index][old_action_index]}")
-    
     self.mytransitions.append(MyTransition(new_game_state, self_action))
-    
-    
-
-
 
 def end_of_round(self, last_game_state: dict, last_action: str, events: List[str]):
     """
@@ -390,13 +283,11 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     
     :param self: The same object that is passed to all of your callbacks.
     """
-    print(f"LAST ACTION: {last_action}")
 
     #
     #   Custom event survived bomb cleanup
     #
     active_bombs.clear()
-
 
     #
     #
@@ -422,8 +313,6 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #   Compute Index
     last_state_index = compute_state_index(last_game_state, last_agent_pos_index, last_pull_index, last_bomb_pos_index, last_explosion_tile_index)
 
-
- 
     last_action_index = action_to_index[last_action]
 
     #
@@ -438,35 +327,12 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     new_value = factor1 + factor3
     self.Q[last_state_index][last_action_index] = new_value
 
-    print(f"reward: {reward}")
-
-    #
-    #   Debugging
-    #
-
-    #   Debug - coin found?
-    for event in events:
-        if event == e.COIN_COLLECTED:
-            global coins_collected 
-            coins_collected = coins_collected + 1
-        if event == e.SURVIVED_BOMB:
-            global bombs_survived
-            bombs_survived = bombs_survived + 1
-    
-    print(f"Coins collected: {coins_collected}")
-    print(f"Bombs survived: {bombs_survived}")
-
-
-    #for i in range(len(self.Q)):
-    #    self.logger.debug(self.Q[i])
-
     global round
     round = round + 1
     self.logger.debug(f"Round nr: {round}")
 
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
     self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
-
 
     training_time = time.time()
 
@@ -475,7 +341,6 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #
     global save_counter
     save_counter = save_counter + 1
-    print(f"save counter: {save_counter}")
     if save_counter == SAVE_INTERVAL:
         print("saving data")
         if os.path.isfile("./mp/mp.hky"):
@@ -486,22 +351,14 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
             with open("my-saved-model.pt", "wb") as file:
                 pickle.dump(self.Q, file)
                 file.close()
-
         save_counter = 0
-
 
     #
     #   Execution Time Analysis
     #
     exec_time = time.time() - training_time
-    print(f"Execution time for function \"end of round\": {exec_time:.6f} seconds")
+    #print(f"Execution time for function \"end of round\": {exec_time:.6f} seconds")
     self.logger.debug(f"Execution time for function \"end of round\": {exec_time} seconds")
- 
-
-def training_end():
-    pass
-
-
 
 def reward_from_events(self, events: List[str]) -> int:
     """
@@ -510,10 +367,6 @@ def reward_from_events(self, events: List[str]) -> int:
     Here you can modify the rewards your agent get so as to en/discourage
     certain behavior.
     """
-    
-    # coin collected?
-
-    
     
     game_rewards = {
         #e.COIN_COLLECTED: 2,

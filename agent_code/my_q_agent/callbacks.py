@@ -10,7 +10,6 @@ from settings import *
 from main import *
 
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
-#ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
 
 cols = (COLS - 2)
 cells = pow((COLS - 2), 2)
@@ -40,11 +39,6 @@ def setup(self):
     """
     
     #
-    #   Time Analysis
-    #
-    
-    
-    #
     #   For Retraining Existing Model
     #
     if self.train and os.path.isfile("my-saved-model.pt"):
@@ -57,17 +51,10 @@ def setup(self):
         print("Setting up model from scratch.")
         weights = np.random.rand(len(ACTIONS))
         self.model = weights / weights.sum()
-        
-        # ---
-        
+
         nr_states = VOID_STATE + ESCAPE_ROUTE_STATES + RUN_FROM_BOMB_STATES + EVADE_EXPLOSION_ON_FIELD_STATES + MOVE_TO_CRATE_COIN_PLAYER_STATES
         self.Q = np.random.rand(nr_states, len(ACTIONS)).astype(np.float16)
-        
-        
-        # ---
-        
     else:
-        print()
         self.logger.info("Loading model from saved state.")
         print("Loading model from saved state.")
         with open("my-saved-model.pt", "rb") as file:
@@ -84,18 +71,8 @@ def act(self, game_state: dict) -> str:
     :return: The action to take as a string.
     """
 
-    #print("test")
-    #print(is_atleast_one_bomb_on_field(game_state))
-    #print(game_state["bombs"])
-    #print("explosion map")
-    #for i in game_state["explosion_map"]:
-    #    print(i)
-    #print(np.sum(game_state["explosion_map"]))
-      
-    
     #---
-    # Get Q vector for current player position and coin position 
-    # 'self': (str, int, bool, (int, int))
+
     agent_pos = game_state["self"][3]
     agent_pos_index = compute_agent_pos_index(agent_pos)
 
@@ -106,43 +83,18 @@ def act(self, game_state: dict) -> str:
     closest_explosion_tile = find_closest_explosion_tile(game_state)
     coin_pos_index, crate_pos_index, bomb_pos_index, explosion_tile_index = compute_indices(closest_coin, closest_crate, closest_bomb, closest_explosion_tile)
 
-
-
-
-
     # todo Exploration vs exploitation
     if self.train and random.random() < RANDOM_ACTION:
-    #if random.random() < RANDOM_ACTION_LOW:
         self.logger.debug("Choosing action purely at random.")
-        #return np.random.choice(ACTIONS, p=[.225, .225, .225, .225, .0, .1])
         return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .0, .2])
         
-    # only random action during normal game, when no bomb is close enough
-    elif random.random() < RANDOM_ACTION:
-        if closest_bomb == None and is_explosion_on_field == False:
-            print("random act")
-            return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .0, .2])
-        elif closest_bomb != None:
-            if dist(agent_pos[0], closest_bomb[0][0], agent_pos[1], closest_bomb[0][1]) >= 4.0:
-                print("random act")
-                return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .0, .2])
-
-            
-                
-
     self.logger.debug("Querying model for action.")
-
-
 
     #
     #   Decision Making
     #
-    
     pull_index = compute_pull_factor_index(game_state, crate_pos_index, coin_pos_index)
         
-    
-    
-    
     #
     #   Compute Index
     #
