@@ -61,12 +61,13 @@ def setup(self):
         # ---
         
         nr_states = VOID_STATE + ESCAPE_ROUTE_STATES + RUN_FROM_BOMB_STATES + EVADE_EXPLOSION_ON_FIELD_STATES + MOVE_TO_CRATE_COIN_PLAYER_STATES
-        self.Q = np.random.rand(nr_states, len(ACTIONS)).astype(np.float32)
+        self.Q = np.random.rand(nr_states, len(ACTIONS)).astype(np.float16)
         
         
         # ---
         
     else:
+        print()
         self.logger.info("Loading model from saved state.")
         print("Loading model from saved state.")
         with open("my-saved-model.pt", "rb") as file:
