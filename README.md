@@ -11,3 +11,7 @@ Therefore, the agent has to be unzipped into the my_q_agent directory, before ru
 
 # 2. agent
 [Branch for the second agent (second_architecture)](https://github.com/YannEbling/bomberman_rl/tree/second_architecture/)
+
+# Other Branches
+During development, we created many branches which by now are deprecated. The only two branches used are, as already described, the branch "master", for main agent
+as well as the branch "second_architecture" for the second architecture. Deployment of the main agent is tested in Docker with the provided Docker file.
