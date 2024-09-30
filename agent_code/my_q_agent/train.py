@@ -26,7 +26,7 @@ import time
 from settings import *
 
 import os
-import auxiliary_functions as aux
+from . import auxiliary_functions as aux
 
 
 # -----------------------------------------------------------
